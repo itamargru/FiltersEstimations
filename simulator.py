@@ -65,34 +65,46 @@ def simulate(a):
 
 
 
-def main(poss, vels, dt, a):
+def run_model(poss, vels, dt, a):
     kf = KalmanFilter(2, 2, 1)
-    kf.x = np.array([[0], [0]])
-    kf.F = np.array([[1, dt], [0, 1]])
-    kf.H = np.array([[1, 0], [0, 1]])
-    kf.Q = np.array([[16, 0], [0, 2]])
-    kf.R = np.array([[16, 0], [0, 2]])
-    kf.B = np.array([[0.5*dt**2], [dt]])
+    kf.x = np.array([[0.0], [0.0]], dtype=float)
+    kf.F = np.array([[1, dt], [0, 1.0]], dtype=float)
+    kf.H = np.array([[1, 0], [0, 1]], dtype=float)
+    kf.Q = np.array([[0.01**2, 0], [0, 0.01**2]], dtype=float)
+    kf.R = np.array([[2, 0], [0, 2]], dtype=float)
+    kf.B = np.array([[0.5*dt**2], [dt]], dtype=float)
 
     simulated = np.array([poss, vels])
-    observetions = simulated + np.sqrt(kf.Q) @ np.random.randn(*simulated.shape)
+    observetions = simulated + np.sqrt(kf.R) @ np.random.randn(*simulated.shape)
 
     predictions_pos = []
     predictions_vel = []
 
-    accelerator = Accelerator(lambda t: a(t) + np.random.randn() * 0.01, dt)
+    accelerator = Accelerator(lambda t: a(t), dt)
     for i in range(observetions.shape[1]):
         z = observetions[:, [i]]
+        kf.x += np.sqrt(kf.Q) @ np.random.randn(2, 1)
         kf.predict(u=accelerator.step())
         kf.update(z)
         predictions_pos += [kf.x.flatten()[0]]
         predictions_vel += [kf.x.flatten()[1]]
 
+    return predictions_pos, predictions_vel
+
+
+def plot_state(pred_pos, pos, pred_vel, vel):
     fig, axes = plt.subplots(2, 1)
-    for axis, predicted, simulated in zip(axes, [predictions_pos, predictions_vel], [poss, vels]):
+    for axis, predicted, simulated in zip(axes, [pred_pos, pred_vel], [pos, vel]):
         axis.scatter(np.arange(len(predicted)), predicted, color="pink")
         axis.scatter(np.arange(len(simulated)), simulated, color="blue")
         axis.legend(["predicted", "simulated"])
+
+def plot_error(err_pos, err_vel):
+    fig, axes = plt.subplots(2, 1)
+    titles = ["position error", "velocity error"]
+    for axis, err, title in zip(axes, [err_pos, err_vel], titles):
+        axis.scatter(np.arange(len(err)), err)
+        axis.set_title(title)
 
 
 def save_and_show(savename):
@@ -100,13 +112,27 @@ def save_and_show(savename):
     plt.show()
 
 
-if __name__ == "__main__":
+def calc_error(pred, gt):
+    err_sqr = map(lambda e: (e[1] - e[0])**2, zip(pred, gt))
+    return list(err_sqr)
+
+
+def main():
     a = lambda t: 0.25 * np.sin(0.1 * t)
     # a = lambda t: 0.25
     poss, vels, dt = simulate(a)
     # main(poss, vels, dt, lambda t: 0.25)
-    main(poss, vels, dt, a)
+    predictions_pos, predictions_vel = run_model(poss, vels, dt, a)
+    plot_state(predictions_pos, poss, predictions_vel, vels)
     save_and_show(savename="kalman_sin.jpg")
+    err_pos = calc_error(predictions_pos, poss)
+    err_vel = calc_error(predictions_vel, vels)
+    plot_error(err_pos, err_vel)
+    save_and_show(savename="error_kalman_sin.jpg")
+
+
+if __name__ == "__main__":
+    main()
     pass
 
 
