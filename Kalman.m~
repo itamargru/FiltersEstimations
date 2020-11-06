@@ -21,33 +21,35 @@ end
 
 
 %% KF
-x_aprior_0 = [0; 100];
-P_aprior_0 = zeros(2);
+x_prior_0 = [0; 100];
+P_prior_0 = zeros(2);
 T = 1; %second
 
-KM.H = [1, 0]; 
-KM.G = [0.5*T^2; T]; %m/s^2
-KM.Q = 1 * KM.G * KM.G.';
-KM.R = 100; %measurement variance
-KM.A = [1, T; 0, 1];
+H = [1, 0]; 
+G = [0.5*T^2; T]; %m/s^2
+Q = 1 * G * G.';
+R = 1e3^2; %measurement variance
+A = [1, T; 0, 1];
+
+KM = CreateKalmanFilter(A,H,G,Q,R,x_prior_0, P_prior_0)
 
 
 %% Simulation
-root = "D:\Technion\projekt aleph\FiltersEstimation";
-[xs_aprior, xs_aposterior, Ps_aprior, Ps_aposterior] = KalmanProcess(KM, x_aprior_0, P_aprior_0, measurement);
-inn = measurement - xs_aprior(:,1).';
-estimation_err = trajectory - xs_aposterior(:,1).';
+root = "D:\Technion\projekt aleph";
+[xs_prior, xs_postrior, Ps_prior, Ps_postirior] = KalmanProcess(KM, measurement);
+inn = measurement - xs_prior(:,1).';
+estimation_err = trajectory - xs_postirior(:,1).';
 measurement_err = trajectory - measurement;
 vel_plot = [velocity, -100]; 
-velocity_err = vel_plot - xs_aposterior(:,2).'; 
+velocity_err = vel_plot - xs_postirior(:,2).'; 
 
 [X,K,L] = idare(KM.A, KM.H.', KM.Q, KM.R);
-norm(xs_aprior(end)-X)
+norm(xs_prior(end)-X)
 
 
 fig1 = figure(1);
 subplot(2, 1, 1); hold on;
-plot(xs_aposterior(:, 1), 'r');
+plot(xs_postirior(:, 1), 'r');
 scatter(1:size(measurement,2), measurement);
 plot(trajectory, 'b');
 legend("Kalman Estimation", "Measurements", "Ground Truth");
@@ -66,7 +68,7 @@ saveas(fig1, fullfile(root, "Position.png"));
 
 fig2 = figure(2);
 subplot(2, 1, 1); hold on;
-plot(xs_aposterior(:, 2), 'r');
+plot(xs_postirior(:, 2), 'r');
 plot(vel_plot);
 legend("Kalman Estimation", "Ground Truth");
 ylabel("Velocity[m/sec]");
@@ -100,34 +102,34 @@ saveas(fig3, fullfile(root, "Innovation.png"));
 %% Kalman Functions
 
 %update
-function [x_aposterior,P_aposterior] = update(KM, x_aprior, P_aprior, z)
-    K = P_aprior * KM.H.' * (KM.H * P_aprior * KM.H.' + KM.R)^-1;
-    x_aposterior = x_aprior + K * (z - KM.H * x_aprior);
-    P_aposterior = (eye(2) - K * KM.H) * P_aprior;
+function [x_postirior,P_postirior] = update(KM, x_prior, P_prior, z)
+    K = P_prior * KM.H.' * (KM.H * P_prior * KM.H.' + KM.R)^-1;
+    x_postirior = x_prior + K * (z - KM.H * x_prior);
+    P_postirior = (eye(2) - K * KM.H) * P_prior;
 end
 
 %predict
-function [x_aprior, P_aprior] = predict(KM, x_aposterior, P_aposterior)
-    x_aprior = KM.A * x_aposterior;
-    P_aprior = KM.A * P_aposterior * KM.A.' + KM.Q;
+function [x_prior, P_prior] = predict(KM, x_postirior, P_postirior)
+    x_prior = KM.A * x_postirior;
+    P_prior = KM.A * P_postirior * KM.A.' + KM.Q;
 end
 
 %process
-function [xs_aprior, xs_aposterior, Ps_aprior, Ps_aposterior] = KalmanProcess(KM, x_init, P_init, measurements)
+function [xs_prior, xs_postirior, Ps_prior, Ps_postirior] = KalmanProcess(KM, measurements)
     num_measurements = size(measurements, 2);
-    x_aprior = x_init;
-    P_aprior = P_init;
-    xs_aprior = zeros(num_measurements, 2);
-    xs_aposterior = zeros(num_measurements, 2);
-    Ps_aprior = zeros(num_measurements, 2, 2);
-    Ps_aposterior = zeros(num_measurements, 2, 2);
+    x_prior = KM.x_init;
+    P_prior = P_init;
+    xs_prior = zeros(num_measurements, 2);
+    xs_postirior = zeros(num_measurements, 2);
+    Ps_prior = zeros(num_measurements, 2, 2);
+    Ps_postirior = zeros(num_measurements, 2, 2);
     for i = 1:num_measurements
-        [x_aposterior,P_aposterior] = update(KM, x_aprior, P_aprior, measurements(i));
-        [x_aprior, P_aprior] = predict(KM, x_aposterior, P_aposterior);
-        xs_aprior(i, :) = x_aprior.';
-        xs_aposterior(i, :) = x_aposterior.';
-        Ps_aprior(i, :, :) = P_aprior;
-        Ps_aposterior(i, :, :) = P_aposterior;
+        [KM.x_postirior,KM.P_postirior] = KM.update(KM, measurements(i));
+        [KM.x_prior, KM.P_prior] = KM.predict(KM);
+        xs_prior(i, :) = x_prior.';
+        xs_postirior(i, :) = x_postirior.';
+        Ps_prior(i, :, :) = P_prior;
+        Ps_postirior(i, :, :) = P_postirior;
     end
 end
 
