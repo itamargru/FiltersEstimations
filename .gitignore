@@ -377,3 +377,7 @@ octave-workspace
 *.webm
 
 # End of https://www.toptal.com/developers/gitignore/api/images,video
+
+# Remove Mac files
+.DS_Store
+
