@@ -28,12 +28,12 @@ T = 1; %second
 KM.H = [1, 0]; 
 KM.G = [0.5*T^2; T]; %m/s^2
 KM.Q = 1 * KM.G * KM.G.';
-KM.R = 100; %measurement variance
+KM.R = 1e2; %measurement variance
 KM.A = [1, T; 0, 1];
 
 
 %% Simulation
-root = "D:\Technion\projekt aleph\FiltersEstimation";
+root = "D:\Technion\projekt aleph";
 [xs_aprior, xs_aposterior, Ps_aprior, Ps_aposterior] = KalmanProcess(KM, x_aprior_0, P_aprior_0, measurement);
 inn = measurement - xs_aprior(:,1).';
 estimation_err = trajectory - xs_aposterior(:,1).';
