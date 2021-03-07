@@ -1,6 +1,7 @@
-clear all;
-close all;
-clc;
+% clear all;
+% close all;
+% clc;
+addpath '.\Filters'
 
 %% Trajectories
 
@@ -24,7 +25,7 @@ T = 1; %second
 
 H = [1, 0]; 
 G = [0.5*T^2; T]; %m/s^2
-Q = 1 * (G * G.');
+Q = 10;
 R = 1e3^2; %measurement variance
 A = [1, T; 0, 1];
 
@@ -33,13 +34,15 @@ KM = CreateKalmanFilter(A,H,G,Q,R,x_prior_0, P_prior_0);
 
 %% Simulation
 root = pwd;
+folder_name = ['Results_', datestr(datetime('now'),'yyyy-mm-dd_HH-MM')];
+mkdir(fullfile(root, folder_name));
+
 [xs_prior, xs_postirior, Ps_prior, Ps_postirior] = KalmanProcess(KM, measurement);
 inn = measurement - xs_prior(:,1).';
 estimation_err = trajectory - xs_postirior(:,1).';
 measurement_err = trajectory - measurement;
 vel_plot = [velocity, -100]; 
 velocity_err = vel_plot - xs_postirior(:,2).'; 
-
 
 fig1 = figure(1);
 subplot(2, 1, 1); hold on;
@@ -58,7 +61,7 @@ ylabel("Error[m]");
 xlabel("Iteration");
 xlim([1, 501]);
 title("Error Estimated Position");
-saveas(fig1, fullfile(root, "Results", "Position.png"));
+saveas(fig1, fullfile(root, folder_name, "Position.png"));
 
 fig2 = figure(2);
 subplot(2, 1, 1); hold on;
@@ -76,7 +79,7 @@ ylabel("Error[m/sec]");
 xlabel("Iteration");
 xlim([1, 501]);
 title("Error Estimated Velocity");
-saveas(fig2, fullfile(root,"Results", "Velocity.png"));
+saveas(fig2, fullfile(root,folder_name, "Velocity.png"));
 
 
 fig3 = figure(3);
@@ -84,7 +87,7 @@ hold on;
 title("innovation process");
 plot(inn);
 xlim([1, 501]);
-saveas(fig3, fullfile(root, "Results", "Innovation.png"));
+saveas(fig3, fullfile(root, folder_name, "Innovation.png"));
 
 
 %% Kalman Process
