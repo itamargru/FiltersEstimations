@@ -7,8 +7,8 @@ function [KM] = CreateKalmanFilter(A, H, G, Q, R, x_prior, P_prior)
     
     KM.x_prior = x_prior;
     KM.P_prior = P_prior;
-    KM.x_posterior = zeros( size(x_prior) );
-    KM.P_posterior = zeros( size(P_prior) );
+    KM.x_posterior = x_prior;
+    KM.P_posterior = P_prior;
     
     KM.update = @(KM, z) update(KM, z, KM.x_prior, KM.P_prior);
     KM.predict = @(KM) predict(KM, KM.x_posterior, KM.P_posterior);
@@ -25,5 +25,5 @@ end
 %predict
 function [x_prior, P_prior] = predict(KM, x_posterior, P_posterior)
     x_prior = KM.A * x_posterior;
-    P_prior = KM.A * P_posterior * KM.A.' + KM.Q;
+    P_prior = KM.A * P_posterior * KM.A.' + KM.G*KM.Q*KM.G.';
 end

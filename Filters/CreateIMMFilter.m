@@ -65,7 +65,7 @@ function [IMM] = predict(IMM)
     n = IMM.size(end);
     for ii = 1:n
         km = IMM.KalmanFilters{ii};
-        [km.x_prior, km.P_prior] = km.update(km);
+        [km.x_prior, km.P_prior] = km.predict(km);
         IMM.KalmanFilters{ii} = km;
     end
 end
@@ -83,12 +83,14 @@ function [IMM] = probUpdate(IMM, measurement)
     n = IMM.size(end);
     for ii = 1:n
         km = IMM.KalmanFilters{ii};
-        v = km.z - km.H * km.x_prior
-        Q = km.H * km.P_prior * km.H.' + km.R
-        p_prior = IMM.p_prior(ii)
-        p_post = (2*pi)^(-n/2)*p_prior * det(Q)^-0.5 * exp(-0.5 * v'*(Q*v));
+        v = measurement - km.H * km.x_prior;
+        Q = km.H * km.P_prior * km.H.' + km.R;
+        p_prior = IMM.p_prior(ii);
+        p_post = p_prior * det(Q)^-0.5 * exp(-0.5 * v'*(Q^-1*v));
         IMM.p_posterior(ii) = p_post;
     end
+    c = sum(IMM.p_posterior);
+    IMM.p_posterior = IMM.p_posterior / c;
 end
 
 function [IMM, x, P] = step(IMM, measurement)
@@ -96,7 +98,7 @@ function [IMM, x, P] = step(IMM, measurement)
     IMM = interaction(IMM);
     IMM = predict(IMM);
     IMM = update(IMM, measurement);
-    IMM = probUpdate(IMM, mesurement);
+    IMM = probUpdate(IMM, measurement);
 
     x = 0;
     P = 0;
