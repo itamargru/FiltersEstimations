@@ -35,7 +35,7 @@ fig2 = figure()
 plot(time, x_kalman(1,:));
 hold on
 plot(time, x_imm(1,:));
-plot(time, GT);
+plot(time, GT(1,:));
 
 legend("kalman trajectory", "IMM trajectory", "Ground Truth");
 title("Trajectories")

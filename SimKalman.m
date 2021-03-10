@@ -63,7 +63,6 @@ for ii = 1:size(data_info,2)
 end
 
 %% Kalman Process
-
 function [xs_prior, xs_posterior, Ps_prior, Ps_posterior] = KalmanProcess(KM, measurements)
     num_measurements = size(measurements, 2);
     xs_prior = zeros(num_measurements, 2);
@@ -81,7 +80,6 @@ function [xs_prior, xs_posterior, Ps_prior, Ps_posterior] = KalmanProcess(KM, me
 end
 
 %% IMM Process
-
 function [xs_post, Ps_post] = IMMProcess(IMM, measurements)
     N = size(measurements, 2);
     xs_post = zeros(N, 2);
