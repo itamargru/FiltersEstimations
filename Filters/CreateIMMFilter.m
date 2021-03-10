@@ -95,10 +95,11 @@ end
 
 function [IMM, x, P] = step(IMM, measurement)
     n = IMM.size(end);
-    IMM = interaction(IMM);
-    IMM = predict(IMM);
+    
     IMM = update(IMM, measurement);
     IMM = probUpdate(IMM, measurement);
+    IMM = interaction(IMM);
+    IMM = predict(IMM);
 
     x = 0;
     P = 0;
