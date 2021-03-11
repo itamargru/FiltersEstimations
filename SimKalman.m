@@ -4,12 +4,63 @@ clc;
 % (1) Kalman VS IMM paper
 addpath 'Filters'
 
+MIs = (0.1:0.1:2.5);
+num_experiment = 100;
+measurment_var = 100^2;
+
+MI = 1;
+% create measurments
+[positions, velocities] = trajectory(MI);
+GT = [positions; velocities];
+N = size(GT,2);
+
+
+inov_kalman_mean = zeros(2, N);
+err_kalman_mean = zeros(2, N);
+inov_imm_mean = zeros(2, N);
+err_imm_mean = zeros(2, N);
+for ii = 1:num_experiment
+    [measurement, xs_kalman, xs_imm] = simulate(GT, MI, measurment_var);
+    % kalman errors
+    inov_kalman_mean =inov_kalman_mean + abs(xs_kalman(:, 1)' - measurement);
+    err_kalman_mean =err_kalman_mean + abs(xs_kalman' - GT);
+    % imm errors
+    inov_imm_mean = inov_imm_mean + abs(xs_imm(:, 1)' - measurement);
+    err_imm_mean = err_imm_mean + abs(xs_imm' - GT);
+end
+% taking the mean - devide by number of experiments
+inov_kalman_mean = inov_kalman_mean / num_experiment;
+err_kalman_mean = err_kalman_mean / num_experiment;
+inov_imm_mean = inov_imm_mean / num_experiment;
+err_imm_mean = err_imm_mean / num_experiment;
+
+% saving the results from the experiment
+peak_kalman_error = max(err_kalman_mean, [], 2);
+peak_imm_error = max(err_imm_mean, [], 2);
+
+RMS_kalman = mean(err_kalman_mean, 2);
+RMS_imm = mean(err_imm_mean, 2);
+
+root = pwd;
+folder_name = ['Results_', datestr(datetime('now'),'yyyy-mm-dd_HH-MM')];
+pathToSave = fullfile(root, 'Results', folder_name);
+mkdir(pathToSave);
+
+plotResults(1:N, GT, measurement, xs_kalman, xs_imm, pathToSave);
+
+data_info =     {['Experiment MI = ', num2str(MI)],
+                ['Measurment Variance = ', num2str(measurment_var)]};
+text_file = fullfile(pathToSave, "data_info.txt");
+for ii = 1:size(data_info,2)
+    dlmwrite(text_file,data_info{ii},'-append','delimiter','');
+end
+
+
+function [measurement, xs_kalman, xs_imm] = simulate(GT, MI, measurment_var)
 
 T = 1;
-R = 100^2; % measurment variance
-MI = 2.5;
+R = measurment_var; % measurment variance
 model_var = (MI / T^2)^2 * R;
-
 
 x_prior_0 = [-2.5e4; 120];
 P_prior_0 = eye(2);
@@ -37,31 +88,18 @@ IMM = CreateIMMFilter({KM1, KM2}, transitionMat, p_init);
 
 
 %% Simulation
-root = pwd;
-folder_name = ['Results_', datestr(datetime('now'),'yyyy-mm-dd_HH-MM')];
-pathToSave = fullfile(root, 'Results', folder_name);
-mkdir(pathToSave);
 
-% create measurments
-[positions, velocities] = trajectory(MI);
-GT = [positions; velocities];
-
-N = floor(size(positions, 2) / T);
+N = floor(size(GT, 2) / T);
 sampled_time = floor((0:(N-1))*T);
 sampled_GT = GT(:, sampled_time + 1);
 
 measurement = sampled_GT(1, :) + R ^0.5 * randn(1, N);
 
-[Kxs_prior, Kxs_postirior, Ps_prior, Ps_postirior] = KalmanProcess(KM, measurement);
+[Kxs_prior, xs_kalman, Ps_prior, Ps_postirior] = KalmanProcess(KM, measurement);
 [xs_imm, Ps_imm] = IMMProcess(IMM, measurement);
-
-plotResults(sampled_time, sampled_GT, measurement, Kxs_postirior, xs_imm, pathToSave);
-
-data_info = {['IMM Q_linear =', num2str(Q_lin),', Q_non-linear=',num2str(Q_imm)], ['Kalman Q=',num2str(Q_kalman)]};
-text_file = fullfile(pathToSave, "data_info.txt")
-for ii = 1:size(data_info,2)
-    dlmwrite(text_file,data_info{ii},'-append','delimiter','');
 end
+
+
 
 %% Kalman Process
 function [xs_prior, xs_posterior, Ps_prior, Ps_posterior] = KalmanProcess(KM, measurements)
