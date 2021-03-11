@@ -12,7 +12,7 @@ function [KM] = CreateKalmanFilter(A, H, G, Q, R, x_prior, P_prior)
     
     KM.update = @(KM, z) update(KM, z, KM.x_prior, KM.P_prior);
     KM.predict = @(KM) predict(KM, KM.x_posterior, KM.P_posterior);
-
+%     KM.step = @(KM, z) step(KM, z);
 end
 
 %update

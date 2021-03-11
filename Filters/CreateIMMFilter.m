@@ -93,23 +93,34 @@ function [IMM] = probUpdate(IMM, measurement)
     IMM.p_posterior = IMM.p_posterior / c;
 end
 
-function [IMM, x, P] = step(IMM, measurement)
+function [IMM, x_post, P_post, x_prior, probs] = step(IMM, measurement)
     n = IMM.size(end);
+    probs.p_prior = IMM.p_prior;
+    % prior is valid for step n
+    prior = IMM.p_prior;
+    x_prior = 0;
+    for ii = 1:n
+        km = IMM.KalmanFilters{ii};
+        x_prior = x_prior + prior(ii) * km.x_prior;
+    end
     
+    % update for step n
     IMM = update(IMM, measurement);
     IMM = probUpdate(IMM, measurement);
+    % predict for step n + 1
     IMM = interaction(IMM);
     IMM = predict(IMM);
 
-    x = 0;
-    P = 0;
+    x_post = 0;
+    P_post = 0;
     post = IMM.p_posterior;
+    probs.p_posterior = IMM.p_posterior;
     for ii = 1:n
         km = IMM.KalmanFilters{ii};
-        x = x + post(ii) * km.x_posterior;
+        x_post = x_post + post(ii) * km.x_posterior;
     end
     for ii = 1:n
-        diff_x = x - km.x_posterior;
-        P = P + post(ii) * (km.P_posterior + diff_x * diff_x');
+        diff_x = x_post - km.x_posterior;
+        P_post = P_post + post(ii) * (km.P_posterior + diff_x * diff_x');
     end
 end

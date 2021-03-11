@@ -7,58 +7,89 @@ addpath 'Filters'
 MIs = (0.1:0.1:2.5);
 num_experiment = 100;
 measurment_var = 100^2;
-
-MI = 1;
-% create measurments
-[positions, velocities] = trajectory(MI);
-GT = [positions; velocities];
-N = size(GT,2);
-
-
-inov_kalman_mean = zeros(2, N);
-err_kalman_mean = zeros(2, N);
-inov_imm_mean = zeros(2, N);
-err_imm_mean = zeros(2, N);
-for ii = 1:num_experiment
-    [measurement, xs_kalman, xs_imm] = simulate(GT, MI, measurment_var);
-    % kalman errors
-    inov_kalman_mean =inov_kalman_mean + abs(xs_kalman(:, 1)' - measurement);
-    err_kalman_mean =err_kalman_mean + abs(xs_kalman' - GT);
-    % imm errors
-    inov_imm_mean = inov_imm_mean + abs(xs_imm(:, 1)' - measurement);
-    err_imm_mean = err_imm_mean + abs(xs_imm' - GT);
-end
-% taking the mean - devide by number of experiments
-inov_kalman_mean = inov_kalman_mean / num_experiment;
-err_kalman_mean = err_kalman_mean / num_experiment;
-inov_imm_mean = inov_imm_mean / num_experiment;
-err_imm_mean = err_imm_mean / num_experiment;
-
-% saving the results from the experiment
-peak_kalman_error = max(err_kalman_mean, [], 2);
-peak_imm_error = max(err_imm_mean, [], 2);
-
-RMS_kalman = mean(err_kalman_mean, 2);
-RMS_imm = mean(err_imm_mean, 2);
-
-root = pwd;
-folder_name = ['Results_', datestr(datetime('now'),'yyyy-mm-dd_HH-MM')];
-pathToSave = fullfile(root, 'Results', folder_name);
-mkdir(pathToSave);
-
-plotResults(1:N, GT, measurement, xs_kalman, xs_imm, pathToSave);
-
-data_info =     {['Experiment MI = ', num2str(MI)],
-                ['Measurment Variance = ', num2str(measurment_var)]};
-text_file = fullfile(pathToSave, "data_info.txt");
-for ii = 1:size(data_info,2)
-    dlmwrite(text_file,data_info{ii},'-append','delimiter','');
-end
-
-
-function [measurement, xs_kalman, xs_imm] = simulate(GT, MI, measurment_var)
-
 T = 1;
+
+peaks.kalman = zeros(2, size(MIs,2));
+peaks.imm = zeros(2, size(MIs,2));
+RMS.kalman = zeros(2, size(MIs,2));
+RMS.imm = zeros(2, size(MIs,2));
+
+for jj = 1 : size(MIs, 2)
+    MI = MIs(jj);
+    % create measurments
+    [positions, velocities] = trajectory(MI, measurment_var, T);
+    GT = [positions; velocities];
+    N = size(GT,2);
+
+
+    inov_kalman_sum = zeros(1, N);
+    err_kalman_sum = zeros(2, N);
+    inov_imm_sum = zeros(1, N);
+    err_imm_sum = zeros(2, N);
+    for ii = 1:num_experiment
+        [measurement, xs_kalman, xs_imm, probs_imm] = simulate(GT, MI, measurment_var, T);
+        % kalman errors
+        inov_kalman_sum =inov_kalman_sum + abs(xs_kalman.prior(:, 1)' - measurement);
+        err_kalman_sum =err_kalman_sum + abs(xs_kalman.posterior' - GT);
+        % imm errors
+        inov_imm_sum = inov_imm_sum + abs(xs_imm.prior(:, 1)' - measurement);
+        err_imm_sum = err_imm_sum + abs(xs_imm.posterior' - GT);
+    end
+    % taking the mean - devide by number of experiments
+    innovation.kalman = inov_kalman_sum / num_experiment;
+    error.kalman = err_kalman_sum / num_experiment;
+    innovation.imm = inov_imm_sum / num_experiment;
+    error.imm = err_imm_sum / num_experiment;
+
+
+    % saving the results from the experiment
+    peak.kalman(:, jj) = max(error.kalman, [], 2);
+    peak.imm(:, jj) = max(error.imm, [], 2);
+
+    RMS.kalman(:, jj) = mean(error.kalman, 2);
+    RMS.imm(:, jj) = mean(error.imm, 2);
+
+    time = 1:N;
+
+
+    root = pwd;
+    folder_name = ['Results_MI',num2str(MI,3),'_', datestr(datetime('now'),'yyyy-mm-dd_HH-MM')];
+    %% 
+    pathToSave = fullfile(root, 'Results', folder_name);
+    mkdir(pathToSave);
+    data.pathToSave = pathToSave;
+    data.MI = MI
+
+    plotResults(1:N, GT, innovation, error, probs_imm, data);
+
+    data_info =     {['Experiment MI = ', num2str(MI)],
+                    ['Measurment Variance = ', num2str(measurment_var)]};
+    text_file = fullfile(pathToSave, "data_info.txt");
+    for ii = 1:size(data_info,2)
+        dlmwrite(text_file,data_info{ii},'-append','delimiter','');
+    end
+    close all
+end
+
+fig_peak = figure()
+plot(MIs, peak.imm(1,:))
+hold on
+plot(MIs, peak.kalman(1,:))
+title("peak error");
+legend("imm", "kalman");
+saveas(fig_peak, fullfile(root, 'Results', "peak_error.png"));
+
+fig_RMS = figure()
+plot(MIs, RMS.imm(1,:))
+hold on
+plot(MIs, RMS.kalman(1,:))
+title("RMS error");
+legend("imm", "kalman");
+saveas(fig_RMS, fullfile(root, 'Results', "RMS.png"));
+
+
+function [measurement, xs_kalman, xs_imm, probs_imm] = simulate(GT, MI, measurment_var, T)
+
 R = measurment_var; % measurment variance
 model_var = (MI / T^2)^2 * R;
 
@@ -76,7 +107,7 @@ KM = CreateKalmanFilter(A,H,G,Q_kalman,R,x_prior_0, P_prior_0);
 
 %% IMM
 
-Q_lin = model_var * 0.2^2; % according to paper (1)
+Q_lin = model_var * 0.2^2; % according to paper (1) changed - multiplied by the model var
 Q_imm = model_var; % according to paper (1)
 
 KM1 = CreateKalmanFilter(A,H,G,Q_lin,R,x_prior_0, P_prior_0);
@@ -95,8 +126,10 @@ sampled_GT = GT(:, sampled_time + 1);
 
 measurement = sampled_GT(1, :) + R ^0.5 * randn(1, N);
 
-[Kxs_prior, xs_kalman, Ps_prior, Ps_postirior] = KalmanProcess(KM, measurement);
-[xs_imm, Ps_imm] = IMMProcess(IMM, measurement);
+[Kxs_prior, Kxs_posterior, Ps_prior, Ps_postirior] = KalmanProcess(KM, measurement);
+xs_kalman.prior = Kxs_prior;
+xs_kalman.posterior = Kxs_posterior; 
+[xs_imm, Ps_imm, probs_imm] = IMMProcess(IMM, measurement);
 end
 
 
@@ -119,14 +152,20 @@ function [xs_prior, xs_posterior, Ps_prior, Ps_posterior] = KalmanProcess(KM, me
 end
 
 %% IMM Process
-function [xs_post, Ps_post] = IMMProcess(IMM, measurements)
+function [xs, Ps_post, probs] = IMMProcess(IMM, measurements)
     N = size(measurements, 2);
-    xs_post = zeros(N, 2);
+    xs.posterior = zeros(N, 2);
+    xs.prior = zeros(N, 2);
+    probs.prior = zeros(2, N);
+    probs.posterior = zeros(2, N);
     Ps_post = zeros(N, 2, 2);
     for ii = 1:N
-        [IMM, x_prior, P_prior] = IMM.step(IMM, measurements(ii));
-        xs_post(ii, :) = x_prior.';
-        Ps_post(ii, :, :) = P_prior;
+        [IMM, x_post, P_post, x_prior, prob] = IMM.step(IMM, measurements(ii));
+        xs.posterior(ii, :) = x_post.';
+        xs.prior(ii, :) = x_prior.';
+        probs.prior(:, ii) = prob.p_prior;
+        probs.posterior(:, ii) = prob.p_posterior;
+        Ps_post(ii, :, :) = P_post;
     end
 end
 
