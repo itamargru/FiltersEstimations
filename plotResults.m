@@ -57,21 +57,21 @@ plot(time, GT(1,:));
 title(['trajectory MI = ', num2str(MI)]);
 ylabel("position[m]");
 xlabel("time[sec]");
-xlim([1, N]);
+xlim([time(1), time(end)]);
 
 subplot(3,1,2)
 plot(time, probs_imm.posterior(1, :));
 title("IMM probability to be at constant velocity state");
 ylabel("probs")
 xlabel("time[sec]");
-xlim([1, N]);
+xlim([time(1), time(end)]);
 
 subplot(3,1,3)
 plot(time, probs_imm.posterior(2, :));
 title("IMM probability to be at maneuvering state");
 ylabel("probs")
 xlabel("time[sec]");
-xlim([1, N]);
+xlim([time(1), time(end)]);
 
 if pathToSave
     saveas(fig1, fullfile(pathToSave, "Errors.png"));

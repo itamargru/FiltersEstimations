@@ -19,21 +19,20 @@ for jj = 1 : size(MIs, 2)
     % create measurments
     [positions, velocities] = trajectory(MI, measurment_var, T);
     GT = [positions; velocities];
-    N = size(GT,2);
-
+    N = floor(size(GT,2) / T);
 
     inov_kalman_sum = zeros(1, N);
     err_kalman_sum = zeros(2, N);
     inov_imm_sum = zeros(1, N);
     err_imm_sum = zeros(2, N);
     for ii = 1:num_experiment
-        [measurement, xs_kalman, xs_imm, probs_imm] = simulate(GT, MI, measurment_var, T);
+        [measurement, xs_kalman, xs_imm, probs_imm, sampled_time] = simulate(GT, MI, measurment_var, T);
         % kalman errors
         inov_kalman_sum =inov_kalman_sum + abs(xs_kalman.prior(:, 1)' - measurement);
-        err_kalman_sum =err_kalman_sum + abs(xs_kalman.posterior' - GT);
+        err_kalman_sum =err_kalman_sum + abs(xs_kalman.posterior' - GT(:,sampled_time + 1));
         % imm errors
         inov_imm_sum = inov_imm_sum + abs(xs_imm.prior(:, 1)' - measurement);
-        err_imm_sum = err_imm_sum + abs(xs_imm.posterior' - GT);
+        err_imm_sum = err_imm_sum + abs(xs_imm.posterior' - GT(:,sampled_time + 1));
     end
     % taking the mean - devide by number of experiments
     innovation.kalman = inov_kalman_sum / num_experiment;
@@ -49,7 +48,7 @@ for jj = 1 : size(MIs, 2)
     RMS.kalman(:, jj) = mean(error.kalman, 2);
     RMS.imm(:, jj) = mean(error.imm, 2);
 
-    time = 1:N;
+    time = sampled_time;
 
 
     root = pwd;
@@ -60,7 +59,7 @@ for jj = 1 : size(MIs, 2)
     data.pathToSave = pathToSave;
     data.MI = MI
 
-    plotResults(1:N, GT, innovation, error, probs_imm, data);
+    plotResults(sampled_time, GT(:, sampled_time + 1), innovation, error, probs_imm, data);
 
     data_info =     {['Experiment MI = ', num2str(MI)],
                     ['Measurment Variance = ', num2str(measurment_var)]};
@@ -88,7 +87,7 @@ legend("imm", "kalman");
 saveas(fig_RMS, fullfile(root, 'Results', "RMS.png"));
 
 
-function [measurement, xs_kalman, xs_imm, probs_imm] = simulate(GT, MI, measurment_var, T)
+function [measurement, xs_kalman, xs_imm, probs_imm, sampled_time] = simulate(GT, MI, measurment_var, T)
 
 R = measurment_var; % measurment variance
 model_var = (MI / T^2)^2 * R;
