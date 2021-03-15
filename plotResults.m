@@ -74,10 +74,10 @@ xlabel("time[sec]");
 xlim([time(1), time(end)]);
 
 if pathToSave
-    saveas(fig1, fullfile(pathToSave, "Errors.png"));
-%     saveas(fig2, fullfile(pathToSave, "Trajectory.png"));
-    saveas(fig3, fullfile(pathToSave, "Innovation.png"));
-    saveas(fig4, fullfile(pathToSave, "Probabilities.png"));
+    saveas(fig1, fullfile(pathToSave, "Errors.jpg"));
+%     saveas(fig2, fullfile(pathToSave, "Trajectory.jpg"));
+    saveas(fig3, fullfile(pathToSave, "Innovation.jpg"));
+    saveas(fig4, fullfile(pathToSave, "Probabilities.jpg"));
 end
 
 end

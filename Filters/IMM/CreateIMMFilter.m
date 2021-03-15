@@ -11,7 +11,6 @@ IMM.p_posterior = reshape(p_init, [], 1);
 
 % IMM functions
 IMM.interaction = @(model) interaction(model);
-IMM.predict = @(model) predict(model);
 IMM.update = @(model, measurement)update(model, measurement);
 IMM.probUpdate = @(model, measurement)probUpdate(model, measurement);
 IMM.step = @(model, measurement)step(model, measurement);
@@ -61,20 +60,11 @@ function [IMM, x_interaction, R_interaction] = interaction(IMM)
     end
 end
 
-function [IMM] = predict(IMM)
-    n = IMM.size(end);
-    for ii = 1:n
-        km = IMM.KalmanFilters{ii};
-        [km.x_prior, km.P_prior] = km.predict(km);
-        IMM.KalmanFilters{ii} = km;
-    end
-end
-
 function [IMM] = update(IMM, measurement)
     n = IMM.size(end);
     for ii = 1:n
         km = IMM.KalmanFilters{ii};
-        [km.x_posterior, km.P_posterior] = km.update(km, measurement);
+        km = km.step(km, measurement);
         IMM.KalmanFilters{ii} = km;
     end
 end
@@ -95,8 +85,13 @@ end
 
 function [IMM, x_post, P_post, x_prior, probs] = step(IMM, measurement)
     n = IMM.size(end);
+    
+    % update for step n
+    IMM = interaction(IMM);
+    IMM = update(IMM, measurement);
+    IMM = probUpdate(IMM, measurement);
+    
     probs.p_prior = IMM.p_prior;
-    % prior is valid for step n
     prior = IMM.p_prior;
     x_prior = 0;
     for ii = 1:n
@@ -104,13 +99,6 @@ function [IMM, x_post, P_post, x_prior, probs] = step(IMM, measurement)
         x_prior = x_prior + prior(ii) * km.x_prior;
     end
     
-    % update for step n
-    IMM = update(IMM, measurement);
-    IMM = probUpdate(IMM, measurement);
-    % predict for step n + 1
-    IMM = interaction(IMM);
-    IMM = predict(IMM);
-
     x_post = 0;
     P_post = 0;
     post = IMM.p_posterior;
