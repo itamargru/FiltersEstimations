@@ -52,7 +52,7 @@ for jj = 1 : size(MIs, 2)
 
 
     root = pwd;
-    folder_name = ['Results_MI',num2str(MI,3),'_', datestr(datetime('now'),'yyyy-mm-dd_HH-MM')];
+    folder_name = ['Results_', datestr(datetime('now'),'yyyy-mm-dd_HH-MM'), '_MI',num2str(MI,3)];
     %% 
     pathToSave = fullfile(root, 'Results', folder_name);
     mkdir(pathToSave);
@@ -70,13 +70,14 @@ for jj = 1 : size(MIs, 2)
     close all
 end
 
+% plot experiments RMS vs MI
 fig_peak = figure()
 plot(MIs, peak.imm(1,:))
 hold on
 plot(MIs, peak.kalman(1,:))
 title("peak error");
 legend("imm", "kalman");
-saveas(fig_peak, fullfile(root, 'Results', "peak_error.png"));
+saveas(fig_peak, fullfile(root, 'Results', "peak_error.jpg"));
 
 fig_RMS = figure()
 plot(MIs, RMS.imm(1,:))
@@ -84,7 +85,7 @@ hold on
 plot(MIs, RMS.kalman(1,:))
 title("RMS error");
 legend("imm", "kalman");
-saveas(fig_RMS, fullfile(root, 'Results', "RMS.png"));
+saveas(fig_RMS, fullfile(root, 'Results', "RMS.jpg"));
 
 
 function [measurement, xs_kalman, xs_imm, probs_imm, sampled_time] = simulate(GT, MI, measurment_var, T)
@@ -140,13 +141,16 @@ function [xs_prior, xs_posterior, Ps_prior, Ps_posterior] = KalmanProcess(KM, me
     xs_posterior = zeros(num_measurements, 2);
     Ps_prior = zeros(num_measurements, 2, 2);
     Ps_posterior = zeros(num_measurements, 2, 2);
-    for i = 1:num_measurements
-        [KM.x_posterior,KM.P_posterior] = KM.update(KM, measurements(i));
-        [KM.x_prior, KM.P_prior] = KM.predict(KM);
-        xs_prior(i, :) = KM.x_prior.';
-        xs_posterior(i, :) = KM.x_posterior.';
-        Ps_prior(i, :, :) = KM.P_prior;
-        Ps_posterior(i, :, :) = KM.P_posterior;
+    xs_prior(1, :) = KM.x_prior.';
+    xs_posterior(1, :) = KM.x_posterior.'; 
+    
+    for i = 2:num_measurements
+        [KM, x, P] = KM.step(KM, measurements(i));
+        
+        xs_prior(i, :) = x.prior.';
+        xs_posterior(i, :) = x.posterior.';
+        Ps_prior(i, :, :) = P.prior;
+        Ps_posterior(i, :, :) = P.posterior;
     end
 end
 
