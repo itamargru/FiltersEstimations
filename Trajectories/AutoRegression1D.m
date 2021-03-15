@@ -5,10 +5,14 @@ N = 100 * num_segments;
 A = 0.99;
 X = zeros(size(X_0, 1), N);
 
-for seg = 1:num_segments
-   X(:, 1) = A * X_0 + (vars(seg)^0.5) * randn; 
-   for n = 2:100
-      X(:, n) = A * X(:, n-1) + (vars(seg)^0.5) * randn;
+X(:, 1) = A * X_0 + (vars(1)^0.5) * randn; 
+for n = 2:100
+   X(:, n) = A * X(:, n-1) + (vars(1)^0.5) * randn;
+end
+
+for seg = 2:num_segments 
+   for n = 1:100
+      X(:, 100*(seg-1)+n) = A * X(:,100*(seg-1)+ n-1) + (vars(seg)^0.5) * randn;
    end
 end
 
