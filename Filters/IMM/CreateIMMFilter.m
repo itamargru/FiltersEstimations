@@ -25,22 +25,25 @@ function [IMM, x_interaction, R_interaction] = interaction(IMM)
     d = size(IMM.KalmanFilters{1}.x_posterior,1);
     H = IMM.TransitionMat;
     
-    % first update the model state prob' using the last postirior prob'
-    IMM.p_prior = H * IMM.p_posterior;
+    % first update the model state prob' using the last posterior prob'
+    IMM.p_prior = H.' * IMM.p_posterior; %fix - transposed the H(doesnt matter in our sitch)
     
     % update each of the kalman filters state with the interaction state
     % this replaces prediction stage
+    % (mixing for X_0i)
     x_interaction = zeros(d, n);
     for ii = 1:n
         for jj = 1:n
             x_posterior = IMM.KalmanFilters{jj}.x_posterior;
-            x_toSum = (H(ii, jj) * IMM.p_posterior(jj) / IMM.p_prior(ii)) * x_posterior;
+            x_toSum = (H(jj, ii) * IMM.p_posterior(jj) / IMM.p_prior(ii)) * x_posterior;
+            %fix - switched i and j indices in H (same in our sitch)
             x_interaction(:, ii) = x_interaction(:, ii) + x_toSum;
         end
     end
     
      % update each of the kalman filters covarince with the interaction state
      % this replaces prediction stage
+     % (mixing for P_0i)
     R_interaction = zeros(d, d, n);
     for ii = 1:n
         for jj = 1:n
@@ -49,7 +52,8 @@ function [IMM, x_interaction, R_interaction] = interaction(IMM)
             x_diff_cov = x_diff * x_diff';
             
             R_posterior = IMM.KalmanFilters{jj}.P_posterior;
-            factor = H(ii, jj) * IMM.p_posterior(jj) / IMM.p_prior(ii);
+            factor = H(jj, ii) * IMM.p_posterior(jj) / IMM.p_prior(ii);
+            %fix - swapped indices here as well
             P_toSum = factor * (R_posterior + x_diff_cov);
             R_interaction(:, :, ii) = R_interaction(:, :, ii) + P_toSum;
         end
@@ -73,14 +77,16 @@ end
 
 function [IMM] = probUpdate(IMM, measurement)
     n = IMM.size(end);
+    %likelihood calculation
     for ii = 1:n
         km = IMM.KalmanFilters{ii};
         v = measurement - km.H * km.x_prior;
         Q = km.H * km.P_prior * km.H.' + km.R;
         p_prior = IMM.p_prior(ii);
         p_post = p_prior * det(Q)^-0.5 * exp(-0.5 * v'*(Q^-1*v));
-        IMM.p_posterior(ii) = p_post;
+        IMM.p_posterior(ii) = p_post / (2*pi)^0.5;%fix - added sqrt(2pi)
     end
+    %mode probability update
     c = sum(IMM.p_posterior);
     IMM.p_posterior = IMM.p_posterior / c;
 end
@@ -101,6 +107,7 @@ function [IMM, x, P_post, probs] = step(IMM, measurement)
         x_prior = x_prior + prior(ii) * km.x_prior;
     end
     
+    % estimate and covariance combination
     x_post = 0;
     P_post = 0;
     post = IMM.p_posterior;

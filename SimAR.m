@@ -1,5 +1,5 @@
-
-A = 1;
+% params
+A = 0.99;
 Q = [4, 100]; % model variances
 R = 100; % measurment variance
 G = 1; % coefficient of the model noise
@@ -11,42 +11,111 @@ P0 = 1;
 prob0 = [0.5, 0.5];
 transMat = [0.9, 0.1; 0.1, 0.9];
 
-vars = Q([1,1,1,1]); %, 2, 1, 2, 2, 1, 1]);
+vars = Q([1,1,2,2]); %, 2, 1, 2, 2, 1, 1]);
 trajectory = AutoRegression1D(X0, vars);
-plot(trajectory); % debug
-measurments = trajectory + R^0.5 * randn(1, length(trajectory));
 
+%trajectory & measurments plot
+figure; hold on;
+plot(trajectory); % debug
+title("Trajectory");
+measurments = trajectory + R^0.5 * randn(1, length(trajectory));
+plot(measurments, '.');
+legend("GT", "Measurements");
+
+%filters init
 KM1 = CreateKalmanFilter(A, H, G, Q(1), R, X0, P0);
 KM2 = CreateKalmanFilter(A, H, G, Q(2), R, X0, P0);
-
 IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
 
+%filter results
 results = {};
 results{1} = KalmanEstimateTrajectory(KM1,measurments); 
 
 results{2} = KalmanEstimateTrajectory(KM2,measurments);
 
-N = length(trajectory);
-o = ones(1, N);
-% plot innovation
-figure; subplot(3,1,1);
-plot(trajectory);
-subplot(3,1,2);
-plot(measurments - results{1}.x_prior', 'k');
-hold on; plot(o * 2*Q(1)^0.5, '-r'); plot(-o * 2*Q(1)^0.5, '-r')
-subplot(3,1,3);
-plot(measurments - results{2}.x_prior', 'k');
-hold on; plot(o * 2*Q(2)^0.5, '-r'); plot(-o * 2*Q(2)^0.5, '-r')
-%plot error
-figure; subplot(3,1,1);
-plot(trajectory);
-subplot(3,1,2);
-plot((trajectory - results{1}.x_posterior').^2);
-subplot(3,1,3);
-plot((trajectory - results{2}.x_posterior').^2);
+results{3} = IMMEstimateTrajectory(IMM, measurments);
 
-RMSE1 = mean((trajectory - results{1}.x_posterior').^2)
-RMSE2 = mean((trajectory - results{2}.x_posterior').^2)
+N = length(trajectory);
+
+
+% plot innovation
+figure; subplot(4,1,1);
+hold on;
+plot(trajectory);
+plot(results{1}.x_posterior);
+plot(results{2}.x_posterior);
+plot(results{3}.x_posterior);
+legend("GT", "KF1", "KF2", "IMM");
+
+subplot(4,1,2);
+plot(measurments - results{1}.x_prior', 'k');
+hold on; 
+plot(2*(H*results{1}.P_prior'*H.'+R).^0.5, '-r'); 
+plot(-2*(H*results{1}.P_prior'*H.'+R).^0.5, '-r');
+
+subplot(4,1,3);
+plot(measurments - results{2}.x_prior', 'k');
+hold on; 
+plot(2*(H*results{2}.P_prior'*H.'+R).^0.5, '-r'); 
+plot(-2*(H*results{2}.P_prior'*H.'+R).^0.5, '-r');
+
+subplot(4,1,4);
+plot(measurments - results{3}.x_prior', 'k');
+%we can see the innovation in the first part is like that of the first
+%filter and in the second like that of the second
+hold on; 
+%we need to figure out how to plot the innovation sleeve from the IMM - 
+%maybe need to change things in createIMMFilter so that we get the relevant
+%data. 
+title("Innovations");
+
+%plot error
+figure; subplot(4,1,1);
+hold on;
+plot(trajectory);
+plot(results{1}.x_posterior);
+plot(results{2}.x_posterior);
+plot(results{3}.x_posterior);
+legend("GT", "KF1", "KF2", "IMM");
+
+subplot(4,1,2);
+plot((trajectory - results{1}.x_posterior').^2);
+subplot(4,1,3);
+plot((trajectory - results{2}.x_posterior').^2);
+subplot(4,1,4);
+plot((trajectory - results{3}.x_posterior').^2);
+
+title("Errors (MSE)");
+
+%plot probabilities
+figure; subplot(2,1,1);
+hold on;
+plot(trajectory);
+plot(results{1}.x_posterior);
+plot(results{2}.x_posterior);
+plot(results{3}.x_posterior);
+legend("GT", "KF1", "KF2", "IMM");
+
+subplot(2,1,2);
+plot(results{3}.prob_posterior(:,1));
+title("Proabability to be in state 1");
+
+%calculate rmse (for two parts only)
+Filter1 = results{1}.x_posterior';
+Filter2 = results{2}.x_posterior';
+Filter3 = results{3}.x_posterior';
+
+RMSE1part1 = mean((trajectory(1:200) - Filter1(1:200)).^2)
+RMSE1part2 = mean((trajectory(201:400) - Filter1(201:400)).^2)
+RMSE2part1 = mean((trajectory(1:200) - Filter2(1:200)).^2)
+RMSE2part2 = mean((trajectory(201:400) - Filter2(201:400)).^2)
+IMMRMSEpart1 = mean((trajectory(1:200) - Filter3(1:200)).^2)
+IMMRMSEpart2 = mean((trajectory(201:400) - Filter3(201:400)).^2)
+%we can see that in a RMSE fashion KF1 is better suited for part 1
+%and KF2 is better suited for part 2.
+%the IMM's RMSE is almost as good as that of each filter in regards to the
+%relevant part of the trajectory.
+
 function [results] = KalmanEstimateTrajectory(KM, measurments)
     d = KM.d;
     N = size(measurments, 2);
@@ -78,7 +147,7 @@ function [results] = IMMEstimateTrajectory(IMM, measurments)
     k = length(IMM.KalmanFilters); % num of kalman models
     
     x_prior = zeros(N, d);
-    x_prior(1, :) = IMM.x_prior;
+    x_prior(1, :) = IMM.KalmanFilters{1}.x_prior;
     x_post = x_prior;
     
     P_post = zeros(N, d, d);
@@ -92,7 +161,7 @@ function [results] = IMMEstimateTrajectory(IMM, measurments)
         [IMM, x, P_post, probs] = IMM.step(IMM, measurments(ii));
         x_prior(ii, :) = x.prior';
         x_post(ii, :) = x.posterior';
-        P_post(ii, :, :) = P.posterior;
+        P_post(ii, :, :) = P_post;
         prob_prior(ii, :) = probs.p_prior;
         prob_post(ii, :) = probs.p_posterior;
     end
