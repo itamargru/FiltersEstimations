@@ -6,7 +6,9 @@ N = size(time, 2);
 %%
 fig1 = figure()
 
-subplot(2,1,1);
+if size(GT,1) > 1
+    subplot(2,1,1);
+end
 plot(time, error.kalman(1,:));
 hold on
 plot(time, error.imm(1,:));
@@ -16,16 +18,18 @@ title("Position Error")
 xlabel("time[sec]")
 ylabel("error[m]")
 
-subplot(2,1,2);
+if size(GT,1) > 1
+    subplot(2,1,2);
 
-plot(time, error.kalman(2,:));
-hold on
-plot(time, error.imm(2,:));
+    plot(time, error.kalman(2,:));
+    hold on
+    plot(time, error.imm(2,:));
 
-legend("kalman error", "IMM error")
-title("Velocity Error")
-xlabel("time[sec]")
-ylabel("error [m/sec]")
+    legend("kalman error", "IMM error")
+    title("Velocity Error")
+    xlabel("time[sec]")
+    ylabel("error [m/sec]")
+end
 
 % %%
 % fig2 = figure()

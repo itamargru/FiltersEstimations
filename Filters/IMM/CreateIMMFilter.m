@@ -9,6 +9,8 @@ IMM.TransitionMat = TransitionMat;
 IMM.p_prior = reshape(p_init, [], 1);
 IMM.p_posterior = reshape(p_init, [], 1);
 
+IMM.d = KalmanFilters{1}.d
+
 % IMM functions
 IMM.interaction = @(model) interaction(model);
 IMM.update = @(model, measurement)update(model, measurement);
@@ -83,7 +85,7 @@ function [IMM] = probUpdate(IMM, measurement)
     IMM.p_posterior = IMM.p_posterior / c;
 end
 
-function [IMM, x_post, P_post, x_prior, probs] = step(IMM, measurement)
+function [IMM, x, P_post, probs] = step(IMM, measurement)
     n = IMM.size(end);
     
     % update for step n
@@ -111,4 +113,7 @@ function [IMM, x_post, P_post, x_prior, probs] = step(IMM, measurement)
         diff_x = x_post - km.x_posterior;
         P_post = P_post + post(ii) * (km.P_posterior + diff_x * diff_x');
     end
+    
+    x.posterior = x_post;
+    x.prior = x_prior;
 end
