@@ -3,19 +3,22 @@ function X = ATC_Scenario(X_0, vars, T)
 %the different vars implement the different manouvering parts of flight
 num_segments = length(vars);
 d = size(X_0, 1); % dimensions
-N = 100 * num_segments;
-A = [0.99, T; 0, 0.99];
+segment_length = 60 / T;
+N = segment_length * num_segments;
+A = [1, T; 0, 1];
 G = [0.5*(T^2); T];
 X = zeros(d, N);
 
 X(:, 1) = A * X_0 + G * (vars(1)^0.5) * randn; 
-for n = 2:100
+for n = 2:segment_length
    X(:, n) = A * X(:, n-1) + G * (vars(1)^0.5) * randn;
 end
 
 for seg = 2:num_segments 
-   for n = 1:100
-      X(:, 100*(seg-1)+n) = A * X(:,100*(seg-1)+ n-1) + G * (vars(seg)^0.5) * randn;
+   for n = 1:segment_length
+      X(:, segment_length*(seg-1)+n) =              ...
+          A * X(:,segment_length*(seg-1)+ n-1) +    ...
+          G * (vars(seg)^0.5) * randn;
    end
 end
 

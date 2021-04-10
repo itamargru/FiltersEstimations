@@ -9,7 +9,7 @@ X0 = 0;
 P0 = 1;
 
 prob0 = [0.5, 0.5];
-transMat = [0.9, 0.1; 0.1, 0.9];
+transMat = [0.99, 0.01; 0.01, 0.99];
 
 vars = Q([1,1,2,2]); %, 2, 1, 2, 2, 1, 1]);
 trajectory = AutoRegression1D(X0, vars);
