@@ -1,7 +1,7 @@
 close all; clear; clc
-num_experiments = 25
-start = 0.1
-stop = 2.5
+num_experiments = 25;
+start = 0.1;
+stop = 2.5;
 
 % lambdas = logspace(log10(start), log10(stop), num_experiments);
 lambdas = linspace(start, stop, num_experiments);
@@ -72,7 +72,7 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
     transMat = [0.9, 0.1; 0.1, 0.9];
 %     lambda = (Q / R)^0.5 * T^2
     process_var = lambda^2 * R / T^4;
-    Q = [0.200, process_var]; % model variances
+    Q = [0.200^2, process_var^2]; % model variances
 
     vars = Q([1,2,1,2,1,2,1]);  
     results = {};
@@ -93,7 +93,7 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
         KM1 = CreateKalmanFilter(A, H, G, Q(1), R, X0, P0);
         KM2 = CreateKalmanFilter(A, H, G, Q(2), R, X0, P0);
 
-        KM = CreateKalmanFilter(A, H, G, 0.8^2 * Q(2), R, X0, P0);
+        KM = CreateKalmanFilter(A, H, G, 0.8 * Q(2), R, X0, P0);
         IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
 
         %filter results
