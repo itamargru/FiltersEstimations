@@ -1,8 +1,7 @@
 close all
 % params
 T = 5;
-A = [0.99, T; 0, 0.99];
-Q = [0.200, 10]; % model variances
+A = [1, T; 0, 1];
 R = 100; % measurment variance
 G = [0.5*(T^2); T]; % coefficient of the model noise
 H = [1, 0]; % measuement coefficient of the X
@@ -11,9 +10,12 @@ X0 = [0; 0];
 P0 = eye(2);
 
 prob0 = [0.5, 0.5];
-transMat = [0.99, 0.01; 0.01, 0.99];
+transMat = [0.9, 0.1; 0.1, 0.9];
 
-vars = Q([1,1,1,2,2,1,1,1,2,2,1,1,2,1,1]); %, 2, 1, 2, 2, 1, 1]);
+process_var = lambda^2 * R / T^4;
+Q = [0.200^2, process_var]; % model variances
+
+vars = Q([1,2,1,2,1,2,1]); 
 trajectory = ATC_Scenario(X0, vars, T);
 
 %trajectory & measurments plot
@@ -37,13 +39,13 @@ results{2} = KalmanEstimateTrajectory(KM2,measurments);
 
 results{3} = IMMEstimateTrajectory(IMM, measurments);
 
-N = size(trajectory, 2);
+N = size(trajectory(1,:), 2);
 
 
 % plot innovation
 figure; subplot(4,1,1);
 hold on;
-plot(trajectory);
+plot(trajectory(1,:));
 plot(results{1}.x_posterior(:,1));
 plot(results{2}.x_posterior(:,1));
 plot(results{3}.x_posterior(:,1));
@@ -74,7 +76,7 @@ title("Innovations");
 %plot error
 figure; subplot(4,1,1);
 hold on;
-plot(trajectory);
+plot(trajectory(1,:));
 plot(results{1}.x_posterior(:,1));
 plot(results{2}.x_posterior(:,1));
 plot(results{3}.x_posterior(:,1));
@@ -92,7 +94,7 @@ title("Errors (MSE)");
 %plot probabilities
 figure; subplot(2,1,1);
 hold on;
-plot(trajectory);
+plot(trajectory(1,:));
 plot(results{1}.x_posterior(:,1));
 plot(results{2}.x_posterior(:,1));
 plot(results{3}.x_posterior(:,1));
@@ -107,12 +109,12 @@ Filter1 = results{1}.x_posterior';
 Filter2 = results{2}.x_posterior';
 Filter3 = results{3}.x_posterior';
 
-RMSE1part1 = mean((trajectory(1:200) - Filter1(1:200)).^2)
-RMSE1part2 = mean((trajectory(201:400) - Filter1(201:400)).^2)
-RMSE2part1 = mean((trajectory(1:200) - Filter2(1:200)).^2)
-RMSE2part2 = mean((trajectory(201:400) - Filter2(201:400)).^2)
-IMMRMSEpart1 = mean((trajectory(1:200) - Filter3(1:200)).^2)
-IMMRMSEpart2 = mean((trajectory(201:400) - Filter3(201:400)).^2)
+% RMSE1part1 = mean((trajectory(1:200) - Filter1(1:200)).^2)
+% RMSE1part2 = mean((trajectory(201:400) - Filter1(201:400)).^2)
+% RMSE2part1 = mean((trajectory(1:200) - Filter2(1:200)).^2)
+% RMSE2part2 = mean((trajectory(201:400) - Filter2(201:400)).^2)
+% IMMRMSEpart1 = mean((trajectory(1:200) - Filter3(1:200)).^2)
+% IMMRMSEpart2 = mean((trajectory(201:400) - Filter3(201:400)).^2)
 %we can see that in a RMSE fashion KF1 is better suited for part 1
 %and KF2 is better suited for part 2.
 %the IMM's RMSE is almost as good as that of each filter in regards to the

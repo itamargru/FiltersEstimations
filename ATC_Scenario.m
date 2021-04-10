@@ -16,6 +16,9 @@ end
 
 for seg = 2:num_segments 
    for n = 1:segment_length
+      if seg == 1 && n == 1
+          continue
+      end
       X(:, segment_length*(seg-1)+n) =              ...
           A * X(:,segment_length*(seg-1)+ n-1) +    ...
           G * (vars(seg)^0.5) * randn;
