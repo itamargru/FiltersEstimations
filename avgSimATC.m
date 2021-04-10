@@ -72,7 +72,7 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
     transMat = [0.9, 0.1; 0.1, 0.9];
 %     lambda = (Q / R)^0.5 * T^2
     process_var = lambda^2 * R / T^4;
-    Q = [0.200^2, process_var^2]; % model variances
+    Q = [0.200^2, process_var]; % model variances
 
     vars = Q([1,2,1,2,1,2,1]);  
     results = {};
