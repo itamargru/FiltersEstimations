@@ -6,8 +6,8 @@ R = 100; % measurment variance
 G = [0.5*(T^2); T]; % coefficient of the model noise
 H = [1, 0]; % measuement coefficient of the X
 
-X0 = [0; 0];
-P0 = eye(2);
+X0 = [0; 100];
+P0 = eye(2)*100^2;
 
 prob0 = [0.5, 0.5];
 transMat = [0.9, 0.1; 0.1, 0.9];

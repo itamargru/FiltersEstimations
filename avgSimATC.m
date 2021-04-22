@@ -65,8 +65,8 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
     G = [0.5*(T^2); T]; % coefficient of the model noise
     H = [1, 0]; % measuement coefficient of the X
 
-    X0 = [0; 0];
-    P0 = eye(2);
+    X0 = [0; 100];
+    P0 = eye(2)*100^2;
 
     prob0 = [0.5, 0.5];
     transMat = [0.9, 0.1; 0.1, 0.9];
@@ -76,17 +76,16 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
 
     vars = Q([1,2,1,2,1,2,1]);  
     results = {};
-
-    trajectory = ATC_Scenario(X0, vars, T);
-
+    
     num_experiments = 100;
     RMSE_IMM = zeros(1, num_experiments);
     RMSE_KF1 = zeros(1, num_experiments);
     RMSE_KF2 = zeros(1, num_experiments);
     RMSE_KF = zeros(1, num_experiments);
-    RMSE = @(est, traj) mean((est - traj).^2);
+    RMSE = @(est, traj) mean((est - traj).^2)^0.5;
 
     for per = 1 : num_experiments
+        trajectory = ATC_Scenario(X0, vars, T);
         measurments = H * trajectory + R^0.5 * randn(1, length(trajectory));
 
         %filters init
