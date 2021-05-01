@@ -9,7 +9,7 @@ IMM.TransitionMat = TransitionMat;
 IMM.p_prior = reshape(p_init, [], 1);
 IMM.p_posterior = reshape(p_init, [], 1);
 
-IMM.d = KalmanFilters{1}.d
+IMM.d = KalmanFilters{1}.d;
 
 % IMM functions
 IMM.interaction = @(model) interaction(model);
