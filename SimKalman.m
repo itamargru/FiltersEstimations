@@ -126,52 +126,84 @@ sampled_GT = GT(:, sampled_time + 1);
 
 measurement = sampled_GT(1, :) + R ^0.5 * randn(1, N);
 
-[Kxs_prior, Kxs_posterior, Ps_prior, Ps_postirior] = KalmanProcess(KM, measurement);
+results = KalmanEstimateTrajectory(KM, measurement);
+Kxs_prior = results.x_prior;
+Kxs_posterior =    results.x_posterior;
+Ps_prior=    results.P_prior;
+Ps_postirior = results.P_posterior;
+
 xs_kalman.prior = Kxs_prior;
 xs_kalman.posterior = Kxs_posterior; 
-[xs_imm, Ps_imm, probs_imm] = IMMProcess(IMM, measurement);
+results = IMMEstimateTrajectory(IMM, measurement);
+
+xs_imm.prior = results.x_prior;
+xs_imm.posterior = results.x_posterior;
+Ps_imm.posterior = results.P_posterior;
+probs_imm.prior = results.prob_prior;
+probs_imm.posterior = results.prob_posterior;
+
 end
 
 
 
 %% Kalman Process
-function [xs_prior, xs_posterior, Ps_prior, Ps_posterior] = KalmanProcess(KM, measurements)
-    num_measurements = size(measurements, 2);
-    xs_prior = zeros(num_measurements, 2);
-    xs_posterior = zeros(num_measurements, 2);
-    Ps_prior = zeros(num_measurements, 2, 2);
-    Ps_posterior = zeros(num_measurements, 2, 2);
-    xs_prior(1, :) = KM.x_prior.';
-    xs_posterior(1, :) = KM.x_posterior.'; 
+function [results] = KalmanEstimateTrajectory(KM, measurments)
+    d = KM.d;
+    N = size(measurments, 2);
     
-    for i = 2:num_measurements
-        [KM, x, P] = KM.step(KM, measurements(i));
-        
-        xs_prior(i, :) = x.prior.';
-        xs_posterior(i, :) = x.posterior.';
-        Ps_prior(i, :, :) = P.prior;
-        Ps_posterior(i, :, :) = P.posterior;
+    x_prior = zeros(N, d);
+    x_prior(1, :) = KM.x_prior;
+    P_prior = zeros(N, d, d);
+    P_prior(1, :, :) = KM.P_prior;
+    x_post = x_prior;
+    P_post = P_prior;
+    
+    for ii = 2 : N
+        [KM, x, P] = KalmanStep(KM, measurments(ii));
+        x_prior(ii, :) = x.prior';
+        x_post(ii, :) = x.posterior';
+        P_prior(ii, :, :) = P.prior;
+        P_post(ii, :, :) = P.posterior;
     end
+    
+    results.x_prior = x_prior;
+    results.x_posterior = x_post;
+    results.P_prior = P_prior;
+    results.P_posterior = P_post;
 end
 
 %% IMM Process
-function [xs, Ps_post, probs] = IMMProcess(IMM, measurements)
-    N = size(measurements, 2);
-    xs.posterior = zeros(N, 2);
-    xs.prior = zeros(N, 2);
-    probs.prior = zeros(2, N);
-    probs.posterior = zeros(2, N);
-    Ps_post = zeros(N, 2, 2);
-    for ii = 1:N
-        [IMM, x_post, P_post, x_prior, prob] = IMM.step(IMM, measurements(ii));
-        xs.posterior(ii, :) = x_post.';
-        xs.prior(ii, :) = x_prior.';
-        probs.prior(:, ii) = prob.p_prior;
-        probs.posterior(:, ii) = prob.p_posterior;
-        Ps_post(ii, :, :) = P_post;
+function [results] = IMMEstimateTrajectory(IMM, measurments)
+    d = IMM.d;
+    N = size(measurments, 2);
+    k = length(IMM.KalmanFilters); % num of kalman models
+    
+    x_prior = zeros(N, d);
+    x_prior(1, :) = IMM.KalmanFilters{1}.x_prior;
+    x_post = x_prior;
+    
+    P_posterior = zeros(N, d, d);
+    P_posterior(1, :, :) = IMM.KalmanFilters{1}.P_prior;
+    
+    prob_prior = zeros(N, k);
+    prob_prior(1, :) = IMM.p_prior;
+    prob_post = prob_prior;
+    
+    for ii = 2 : N
+        [IMM, x, P_post, probs] = IMM.step(IMM, measurments(ii));
+        x_prior(ii, :) = x.prior';
+        x_post(ii, :) = x.posterior';
+        P_posterior(ii, :, :) = P_post;
+        prob_prior(ii, :) = probs.p_prior;
+        prob_post(ii, :) = probs.p_posterior;
     end
+    
+    results.x_prior = x_prior;
+    results.x_posterior = x_post;
+    results.P_posterior = P_posterior;
+    results.prob_prior = prob_prior;
+    results.prob_posterior = prob_post;
 end
-
 
 
 

@@ -64,14 +64,14 @@ xlabel("time[sec]");
 xlim([time(1), time(end)]);
 
 subplot(3,1,2)
-plot(time, probs_imm.posterior(1, :));
+plot(time, probs_imm.posterior(:, 1));
 title("IMM probability to be at constant velocity state");
 ylabel("probs")
 xlabel("time[sec]");
 xlim([time(1), time(end)]);
 
 subplot(3,1,3)
-plot(time, probs_imm.posterior(2, :));
+plot(time, probs_imm.posterior(:, 2));
 title("IMM probability to be at maneuvering state");
 ylabel("probs")
 xlabel("time[sec]");

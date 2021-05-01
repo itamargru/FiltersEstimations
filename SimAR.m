@@ -1,6 +1,10 @@
+addpath(genpath('Filters'));
+addpath(genpath('Trajectories'));
+addpath(genpath('vis'));
+
 % params
-A = 0.99;
-Q = [4, 100]; % model variances
+A = 1;
+Q = [4, 1000]; % model variances
 R = 100; % measurment variance
 G = 1; % coefficient of the model noise
 H = 1; % measuement coefficient of the X
@@ -11,7 +15,7 @@ P0 = 1;
 prob0 = [0.5, 0.5];
 transMat = [0.9, 0.1; 0.1, 0.9];
 
-vars = Q([1,1,2,2]); %, 2, 1, 2, 2, 1, 1]);
+vars = Q([1,1,1,1,2,2]);
 trajectory = AutoRegression1D(X0, vars);
 
 %trajectory & measurments plot
@@ -40,6 +44,7 @@ N = length(trajectory);
 
 % plot innovation
 figure; subplot(4,1,1);
+title({"Innovations", "Ground Truth"});
 hold on;
 plot(trajectory);
 plot(results{1}.x_posterior);
@@ -52,25 +57,29 @@ plot(measurments - results{1}.x_prior', 'k');
 hold on; 
 plot(2*(H*results{1}.P_prior'*H.'+R).^0.5, '-r'); 
 plot(-2*(H*results{1}.P_prior'*H.'+R).^0.5, '-r');
+title(['Kalman \sigma^2=', num2str(KM1.Q)]);
 
 subplot(4,1,3);
 plot(measurments - results{2}.x_prior', 'k');
 hold on; 
 plot(2*(H*results{2}.P_prior'*H.'+R).^0.5, '-r'); 
 plot(-2*(H*results{2}.P_prior'*H.'+R).^0.5, '-r');
+title(['Kalman \sigma^2=', num2str(KM2.Q)]);
 
 subplot(4,1,4);
 plot(measurments - results{3}.x_prior', 'k');
+title('IMM');
 %we can see the innovation in the first part is like that of the first
 %filter and in the second like that of the second
 hold on; 
 %we need to figure out how to plot the innovation sleeve from the IMM - 
 %maybe need to change things in createIMMFilter so that we get the relevant
 %data. 
-title("Innovations");
+
 
 %plot error
 figure; subplot(4,1,1);
+title({"Errors (MSE)", "Ground Truth"});
 hold on;
 plot(trajectory);
 plot(results{1}.x_posterior);
@@ -80,15 +89,17 @@ legend("GT", "KF1", "KF2", "IMM");
 
 subplot(4,1,2);
 plot((trajectory - results{1}.x_posterior').^2);
+title(['Kalman \sigma^2=', num2str(KM1.Q)]);
 subplot(4,1,3);
 plot((trajectory - results{2}.x_posterior').^2);
+title(['Kalman \sigma^2=', num2str(KM2.Q)]);
 subplot(4,1,4);
 plot((trajectory - results{3}.x_posterior').^2);
-
-title("Errors (MSE)");
+title('IMM');
 
 %plot probabilities
 figure; subplot(2,1,1);
+title("Ground Truth vs. Filters Estimation");
 hold on;
 plot(trajectory);
 plot(results{1}.x_posterior);
