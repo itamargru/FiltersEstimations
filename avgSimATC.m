@@ -69,7 +69,7 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
     P0 = eye(2)*100^2;
 
     prob0 = [0.5, 0.5];
-    transMat = [0.9, 0.1; 0.1, 0.9];
+    transMat = [0.99, 0.01; 0.01, 0.99];
 %     lambda = (Q / R)^0.5 * T^2
     process_var = lambda^2 * R / T^4;
     Q = [0.200^2, process_var]; % model variances
@@ -93,17 +93,20 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
         KM2 = CreateKalmanFilter(A, H, G, Q(2), R, X0, P0);
 
         KM = CreateKalmanFilter(A, H, G, 0.8 * Q(2), R, X0, P0);
-        IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
+        % IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
+        IMM = IMM_Estimator({KM1, KM2}, transMat, prob0);
 
         %filter results
         results{per, 1} = KalmanEstimateTrajectory(KM1,measurments); 
         results{per, 2} = KalmanEstimateTrajectory(KM2,measurments);
-        results{per, 3} = IMMEstimateTrajectory(IMM, measurments);
+        % results{per, 3} = IMMEstimateTrajectory(IMM, measurments);
+        results{per, 3} = newIMMEstimateTrajectory(IMM, measurments);
         results{per, 4} = KalmanEstimateTrajectory(KM, measurments);
         results{per, 5} = {trajectory, measurments};
 
         RMSE_KF1(1, per) = RMSE(results{per, 1}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
         RMSE_KF2(1, per) = RMSE(results{per, 2}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
+        % RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
         RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
         RMSE_KF(1, per) = RMSE(results{per, 4}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
 
@@ -176,5 +179,27 @@ function [results] = IMMEstimateTrajectory(IMM, measurments)
     results.P_posterior = P_posterior;
     results.prob_prior = prob_prior;
     results.prob_posterior = prob_post;
+end
+
+
+function [results] = newIMMEstimateTrajectory(IMM, measurments)
+    d = IMM.d;
+    N = size(measurments, 2);
+    k = length(IMM.KalmanFilters); % num of kalman models
+    
+    x_prior = zeros(N, d);
+    x_post = x_prior;
+    state_probs = zeros(N, k);
+    
+    for ii = 1 : N
+        [IMM, res] = IMM.step(IMM, measurments(ii));
+        x_post(ii, :) = res.x_posterior';
+        x_prior(ii, :) = res.x_prior';
+        state_probs(ii, :) = res.model_prob';
+    end
+    
+    results.x_prior = x_prior;
+    results.x_posterior = x_post;
+    results.state_probs = state_probs;
 end
 

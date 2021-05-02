@@ -1,3 +1,4 @@
+clc;
 addpath(genpath('Filters'));
 addpath(genpath('Trajectories'));
 addpath(genpath('vis'));
@@ -13,7 +14,7 @@ X0 = 0;
 P0 = 1;
 
 prob0 = [0.5, 0.5];
-transMat = [0.99, 0.01; 0.01, 0.99];
+transMat = [0.9, 0.1; 0.1, 0.9];
 
 vars = Q([1,1,1,1,2,2]);
 trajectory = AutoRegression1D(X0, vars);
@@ -29,7 +30,8 @@ legend("GT", "Measurements");
 %filters init
 KM1 = CreateKalmanFilter(A, H, G, Q(1), R, X0, P0);
 KM2 = CreateKalmanFilter(A, H, G, Q(2), R, X0, P0);
-IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
+% IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
+IMM = IMM_Estimator({KM1, KM2}, transMat, prob0);
 
 %filter results
 results = {};
@@ -37,7 +39,8 @@ results{1} = KalmanEstimateTrajectory(KM1,measurments);
 
 results{2} = KalmanEstimateTrajectory(KM2,measurments);
 
-results{3} = IMMEstimateTrajectory(IMM, measurments);
+% results{3} = IMMEstimateTrajectory(IMM, measurments);
+results{3} = newIMMEstimateTrajectory(IMM, measurments);
 
 N = length(trajectory);
 
@@ -108,7 +111,8 @@ plot(results{3}.x_posterior);
 legend("GT", "KF1", "KF2", "IMM");
 
 subplot(2,1,2);
-plot(results{3}.prob_posterior(:,1));
+% plot(results{3}.prob_posterior(:,1));
+plot(results{3}.state_probs(:,1));
 title("Proabability to be in state 1");
 
 %calculate rmse (for two parts only)
@@ -116,12 +120,12 @@ Filter1 = results{1}.x_posterior';
 Filter2 = results{2}.x_posterior';
 Filter3 = results{3}.x_posterior';
 
-RMSE1part1 = mean((trajectory(1:200) - Filter1(1:200)).^2)
-RMSE1part2 = mean((trajectory(201:400) - Filter1(201:400)).^2)
-RMSE2part1 = mean((trajectory(1:200) - Filter2(1:200)).^2)
-RMSE2part2 = mean((trajectory(201:400) - Filter2(201:400)).^2)
-IMMRMSEpart1 = mean((trajectory(1:200) - Filter3(1:200)).^2)
-IMMRMSEpart2 = mean((trajectory(201:400) - Filter3(201:400)).^2)
+RMSE1part1 = mean((trajectory(1:200) - Filter1(1:200)).^2)^0.5
+RMSE1part2 = mean((trajectory(201:400) - Filter1(201:400)).^2)^0.5
+RMSE2part1 = mean((trajectory(1:200) - Filter2(1:200)).^2)^0.5
+RMSE2part2 = mean((trajectory(201:400) - Filter2(201:400)).^2)^0.5
+IMMRMSEpart1 = mean((trajectory(1:200) - Filter3(1:200)).^2)^0.5
+IMMRMSEpart2 = mean((trajectory(201:400) - Filter3(201:400)).^2)^0.5
 %we can see that in a RMSE fashion KF1 is better suited for part 1
 %and KF2 is better suited for part 2.
 %the IMM's RMSE is almost as good as that of each filter in regards to the
@@ -183,4 +187,28 @@ function [results] = IMMEstimateTrajectory(IMM, measurments)
     results.prob_prior = prob_prior;
     results.prob_posterior = prob_post;
 end
+
+function [results] = newIMMEstimateTrajectory(IMM, measurments)
+    d = IMM.d;
+    N = size(measurments, 2);
+    k = length(IMM.KalmanFilters); % num of kalman models
+    
+    x_prior = zeros(N, d);
+    x_post = x_prior;
+    
+    
+    state_probs = zeros(N, k);
+    
+    for ii = 1 : N
+        [IMM, res] = IMM.step(IMM, measurments(ii));
+        x_post(ii, :) = res.x_posterior';
+        x_prior(ii, :) = res.x_prior';
+        state_probs(ii, :) = res.model_prob';
+    end
+    
+    results.x_prior = x_prior;
+    results.x_posterior = x_post;
+    results.state_probs = state_probs;
+end
+
 
