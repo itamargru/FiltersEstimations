@@ -6,7 +6,10 @@ function [Kalman] = KalmanUpdate(Kalman, z)
     P_prior = Kalman.P_prior;
     d = Kalman.d;
     
-    K = P_prior * H.' * (H * P_prior * H.' + R)^-1;
-    Kalman.x_posterior = x_prior + K * (z - H * x_prior);
+    y = z - H * x_prior;
+    S = H * P_prior * H.' + R;
+    K = P_prior * H' * S^-1;
+    
+    Kalman.x_posterior = x_prior + K * y;
     Kalman.P_posterior = (eye(d) - K * H) * P_prior;
 end

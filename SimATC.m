@@ -15,7 +15,7 @@ transMat = [0.9, 0.1; 0.1, 0.9];
 process_var = lambda^2 * R / T^4;
 Q = [0.200^2, process_var]; % model variances
 
-vars = Q([1,2,1,2,1,2,1]); 
+vars = Q([1, 2, 1, 2, 1, 2, 1]); 
 trajectory = ATC_Scenario(X0, vars, T);
 
 %trajectory & measurments plot

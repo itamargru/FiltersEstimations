@@ -17,8 +17,8 @@ T=5;
 disp('Parameters from Paper:')
 disp(['--> Time Interval=', num2str(T),'[sec]']);
 disp(['--> Measurment Variance=', num2str(R),'[m^2]']);
-disp([' ']);
 disp('Starting experiments:');
+fprintf('\n')
 for per = 1:num_experiments
 
     process_var = lambdas(per)^2 * R / T^4;
