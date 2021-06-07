@@ -98,7 +98,9 @@ function [IMM] = mm_filtering(IMM, measurement)
     for ii = 1:r
         km = IMM.KalmanFilters{ii};
         Z = measurement - km.H * km.x_prior;
+%         Z = measurement - km.H * IMM.x_mixed(:,ii);
         S = km.H * km.P_prior * km.H.' + km.R;
+%         S = km.H * IMM.P_mixed(:,:,ii) * km.H.' + km.R;
         IMM.likelihood(:, ii) = (det(2*pi*S)^-0.5)...
                                                 *exp(-0.5 * Z'*((S)^-1)*Z);
     end

@@ -11,6 +11,10 @@ peak_IMMs = zeros(1, num_experiments);
 mean_IMMs = zeros(1, num_experiments);
 peak_KFs = zeros(1, num_experiments);
 mean_KFs = zeros(1, num_experiments);
+peak_Genies = zeros(1, num_experiments);
+mean_Genies = zeros(1, num_experiments);
+peak_my = zeros(1, num_experiments);
+mean_my = zeros(1, num_experiments);
 
 R=100^2;
 T=5;
@@ -26,12 +30,16 @@ for per = 1:num_experiments
         ': process var=', num2str(process_var),...
         ', lambda=', num2str(lambdas(per))])
     
-    [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambdas(per));
+    [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_my, mean_my] = runExperiment(lambdas(per));
     
     peak_IMMs(per) = peak_IMM;
     mean_IMMs(per) = mean_IMM;
     peak_KFs(per) = peak_KF;
     mean_KFs(per) = mean_KF;
+    peak_Genies(per) = peak_G;
+    mean_Genies(per) = mean_G;
+    peak_my(per) = peak_my;
+    mean_my(per) = mean_my;
 end
 disp('Finished');
 
@@ -43,7 +51,11 @@ subplot(2,1,1);
 plot(lambdas, peak_IMMs);
 hold on;
 plot(lambdas, peak_KFs);
-legend("IMM", "Kalman Filter");
+hold on;
+plot(lambdas, peak_Genies);
+hold on;
+plot(lambdas, peak_my);
+legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
 title("Peak RMSE");
 
 
@@ -52,11 +64,15 @@ subplot(2,1,2);
 plot(lambdas, mean_IMMs);
 hold on;
 plot(lambdas, mean_KFs);
-legend("IMM", "Kalman Filter");
+hold on;
+plot(lambdas, mean_Genies);
+hold on;
+plot(lambdas, mean_my);
+legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
 title("Mean RMSE");
 
 
-function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
+function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_myIMM, mean_myIMM] = runExperiment(lambda)
     % params
     T = 5;
     A = [1, T; 0, 1];
@@ -67,13 +83,17 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
 
     X0 = [0; 100];
     P0 = eye(2)*100^2;
+%     P0 = [T^2 * 100^2, 0; 0, 100^2];
 
     prob0 = [0.5, 0.5];
-    transMat = [0.99, 0.01; 0.01, 0.99];
+    transMat = [0.9, 0.1; 0.1, 0.9];
 %     lambda = (Q / R)^0.5 * T^2
     process_var = lambda^2 * R / T^4;
     Q = [0.200^2, process_var]; % model variances
-
+    
+    process_var_const = 1^2* R / T^4;
+    Q_const = [0.200^2, process_var_const];
+    
     vars = Q([1,2,1,2,1,2,1]);  
     results = {};
     
@@ -82,10 +102,12 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
     RMSE_KF1 = zeros(1, num_experiments);
     RMSE_KF2 = zeros(1, num_experiments);
     RMSE_KF = zeros(1, num_experiments);
+    RMSE_GKF = zeros(1, num_experiments);
+    RMSE_myIMM = zeros(1, num_experiments);
     RMSE = @(est, traj) mean((est - traj).^2)^0.5;
 
     for per = 1 : num_experiments
-        trajectory = ATC_Scenario(X0, vars, T);
+        [trajectory, cur_var] = ATC_Scenario(X0, vars, T);
         measurments = H * trajectory + R^0.5 * randn(1, length(trajectory));
 
         %filters init
@@ -95,6 +117,7 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
         KM = CreateKalmanFilter(A, H, G, 0.8 * Q(2), R, X0, P0);
         % IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
         IMM = IMM_Estimator({KM1, KM2}, transMat, prob0);
+        GKF = CreateGenieKF(A, H, G, Q(1), R, X0, P0); %inital Q doesnt matter
 
         %filter results
         results{per, 1} = KalmanEstimateTrajectory(KM1,measurments); 
@@ -102,13 +125,32 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
         % results{per, 3} = IMMEstimateTrajectory(IMM, measurments);
         results{per, 3} = newIMMEstimateTrajectory(IMM, measurments);
         results{per, 4} = KalmanEstimateTrajectory(KM, measurments);
-        results{per, 5} = {trajectory, measurments};
+        results{per, 5} = GenieEstimateTrajectory(GKF, measurments, cur_var);
+        results{per, 6} = {trajectory, measurments};
+        
+        TPM_imm = transMat;
+        init_probs_imm = [0.5;0.5];
+        models{1}.A = A;
+        models{1}.H = [1 0];
+        temp_C = [0.5*T^2;T]*Q(1);
+        models{1}.Q =  temp_C* temp_C';
+        models{1}.G = sqrt(R);
 
-        RMSE_KF1(1, per) = RMSE(results{per, 1}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
-        RMSE_KF2(1, per) = RMSE(results{per, 2}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
+        models{2}.A = A;
+        models{2}.H = [1 0];
+        temp_C = [0.5*T^2;T]*Q(2);
+        models{2}.Q =  temp_C* temp_C';
+        models{2}.G = sqrt(R);
+
+        [x_hat_IMM_genie, ~,~,~] = IMM_sequence_genie(measurments,X0,P0,models,TPM_imm,init_probs_imm);
+
+        RMSE_KF1(1, per) = RMSE(results{per, 1}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
+        RMSE_KF2(1, per) = RMSE(results{per, 2}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         % RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
-        RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
-        RMSE_KF(1, per) = RMSE(results{per, 4}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
+        RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
+        RMSE_KF(1, per) = RMSE(results{per, 4}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
+        RMSE_GKF(1, per) = RMSE(results{per, 5}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
+        RMSE_myIMM(1,per) = RMSE( x_hat_IMM_genie(1,:),results{per,5}{1}(1,:));
 
     end
     
@@ -116,11 +158,16 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF] = runExperiment(lambda)
     peak_KF2 = max(RMSE_KF2);
     peak_IMM = max(RMSE_IMM);
     peak_KF = max(RMSE_KF);
+    peak_G = max(RMSE_GKF);
+    peak_myIMM = max(RMSE_myIMM);
 
     mean_KF1 = mean(RMSE_KF1);
     mean_KF2 = mean(RMSE_KF2);
     mean_IMM = mean(RMSE_IMM);
     mean_KF = mean(RMSE_KF);
+    mean_G = mean(RMSE_GKF);
+    peak_myIMM = mean(RMSE_myIMM);
+
 
 end
 
@@ -137,6 +184,31 @@ function [results] = KalmanEstimateTrajectory(KM, measurments)
     
     for ii = 2 : N
         [KM, x, P] = KalmanStep(KM, measurments(ii));
+        x_prior(ii, :) = x.prior';
+        x_post(ii, :) = x.posterior';
+        P_prior(ii, :, :) = P.prior;
+        P_post(ii, :, :) = P.posterior;
+    end
+    
+    results.x_prior = x_prior;
+    results.x_posterior = x_post;
+    results.P_prior = P_prior;
+    results.P_posterior = P_post;
+end
+
+function [results] = GenieEstimateTrajectory(KM, measurments, cur_var)
+    d = KM.d;
+    N = size(measurments, 2);
+    
+    x_prior = zeros(N, d);
+    x_prior(1, :) = KM.x_prior;
+    P_prior = zeros(N, d, d);
+    P_prior(1, :, :) = KM.P_prior;
+    x_post = x_prior;
+    P_post = P_prior;
+    
+    for ii = 2 : N
+        [KM, x, P] = GenieKFStep(KM, measurments(ii), cur_var(ii));
         x_prior(ii, :) = x.prior';
         x_post(ii, :) = x.posterior';
         P_prior(ii, :, :) = P.prior;
