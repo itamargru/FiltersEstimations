@@ -10,14 +10,10 @@ G = [0.5*(T^2); T];
 X = zeros(d, N);
 cur_var = zeros(1, N); % for the genie KF
 
-X(:, 1) = A * X_0 + G * (vars(1)^0.5) * randn; 
+X(:, 1) = X_0; 
 cur_var(1) = vars(1);
-for n = 2:segment_length
-    cur_var(n) = vars(1);
-    X(:, n) = A * X(:, n-1) + G * (vars(1)^0.5) * randn;
-end
 
-for seg = 2:num_segments 
+for seg = 1:num_segments 
    for n = 1:segment_length
       if seg == 1 && n == 1
           continue

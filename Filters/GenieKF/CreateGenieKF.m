@@ -18,5 +18,5 @@ function [KM] = CreateGenieKF(A, H, G, Q, R, x_prior, P_prior)
     
     KM.update = @(KM, z) KalmanUpdate(KM, z);
     KM.predict = @(KM) KalmanPredict(KM);
-    KM.step = @(KM, z) GenieKFStep(KM, z);
+    KM.step = @(KM, z, Q) GenieKFStep(KM, z, Q);
 end

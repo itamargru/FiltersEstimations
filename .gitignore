@@ -1,5 +1,5 @@
 # project related
-Results/*
+*/Results/*
 test.m
 untitled.m
 
@@ -384,4 +384,3 @@ octave-workspace
 
 # Remove Mac files
 .DS_Store
-

@@ -16,7 +16,7 @@ P0 = 1;
 prob0 = [0.5, 0.5];
 transMat = [0.9, 0.1; 0.1, 0.9];
 
-vars = Q([1,1,1,1,2,2]);
+vars = Q([1,2,1,2,1,2]);
 trajectory = AutoRegression1D(X0, vars);
 
 %trajectory & measurments plot

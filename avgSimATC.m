@@ -13,8 +13,6 @@ peak_KFs = zeros(1, num_experiments);
 mean_KFs = zeros(1, num_experiments);
 peak_Genies = zeros(1, num_experiments);
 mean_Genies = zeros(1, num_experiments);
-peak_my = zeros(1, num_experiments);
-mean_my = zeros(1, num_experiments);
 
 R=100^2;
 T=5;
@@ -30,7 +28,7 @@ for per = 1:num_experiments
         ': process var=', num2str(process_var),...
         ', lambda=', num2str(lambdas(per))])
     
-    [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_my, mean_my] = runExperiment(lambdas(per));
+    [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G] = runExperiment(lambdas(per));
     
     peak_IMMs(per) = peak_IMM;
     mean_IMMs(per) = mean_IMM;
@@ -38,8 +36,6 @@ for per = 1:num_experiments
     mean_KFs(per) = mean_KF;
     peak_Genies(per) = peak_G;
     mean_Genies(per) = mean_G;
-    peak_my(per) = peak_my;
-    mean_my(per) = mean_my;
 end
 disp('Finished');
 
@@ -53,8 +49,6 @@ hold on;
 plot(lambdas, peak_KFs);
 hold on;
 plot(lambdas, peak_Genies);
-hold on;
-plot(lambdas, peak_my);
 legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
 title("Peak RMSE");
 
@@ -66,13 +60,11 @@ hold on;
 plot(lambdas, mean_KFs);
 hold on;
 plot(lambdas, mean_Genies);
-hold on;
-plot(lambdas, mean_my);
 legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
 title("Mean RMSE");
 
 
-function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_myIMM, mean_myIMM] = runExperiment(lambda)
+function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G] = runExperiment(lambda)
     % params
     T = 5;
     A = [1, T; 0, 1];
@@ -85,7 +77,7 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_myIMM, mean
     P0 = eye(2)*100^2;
 %     P0 = [T^2 * 100^2, 0; 0, 100^2];
 
-    prob0 = [0.5, 0.5];
+    prob0 = [1, 0];
     transMat = [0.9, 0.1; 0.1, 0.9];
 %     lambda = (Q / R)^0.5 * T^2
     process_var = lambda^2 * R / T^4;
@@ -103,7 +95,6 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_myIMM, mean
     RMSE_KF2 = zeros(1, num_experiments);
     RMSE_KF = zeros(1, num_experiments);
     RMSE_GKF = zeros(1, num_experiments);
-    RMSE_myIMM = zeros(1, num_experiments);
     RMSE = @(est, traj) mean((est - traj).^2)^0.5;
 
     for per = 1 : num_experiments
@@ -127,22 +118,6 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_myIMM, mean
         results{per, 4} = KalmanEstimateTrajectory(KM, measurments);
         results{per, 5} = GenieEstimateTrajectory(GKF, measurments, cur_var);
         results{per, 6} = {trajectory, measurments};
-        
-        TPM_imm = transMat;
-        init_probs_imm = [0.5;0.5];
-        models{1}.A = A;
-        models{1}.H = [1 0];
-        temp_C = [0.5*T^2;T]*Q(1);
-        models{1}.Q =  temp_C* temp_C';
-        models{1}.G = sqrt(R);
-
-        models{2}.A = A;
-        models{2}.H = [1 0];
-        temp_C = [0.5*T^2;T]*Q(2);
-        models{2}.Q =  temp_C* temp_C';
-        models{2}.G = sqrt(R);
-
-        [x_hat_IMM_genie, ~,~,~] = IMM_sequence_genie(measurments,X0,P0,models,TPM_imm,init_probs_imm);
 
         RMSE_KF1(1, per) = RMSE(results{per, 1}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         RMSE_KF2(1, per) = RMSE(results{per, 2}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
@@ -150,7 +125,6 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_myIMM, mean
         RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         RMSE_KF(1, per) = RMSE(results{per, 4}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         RMSE_GKF(1, per) = RMSE(results{per, 5}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
-        RMSE_myIMM(1,per) = RMSE( x_hat_IMM_genie(1,:),results{per,5}{1}(1,:));
 
     end
     
@@ -159,14 +133,12 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G, peak_myIMM, mean
     peak_IMM = max(RMSE_IMM);
     peak_KF = max(RMSE_KF);
     peak_G = max(RMSE_GKF);
-    peak_myIMM = max(RMSE_myIMM);
 
     mean_KF1 = mean(RMSE_KF1);
     mean_KF2 = mean(RMSE_KF2);
     mean_IMM = mean(RMSE_IMM);
     mean_KF = mean(RMSE_KF);
     mean_G = mean(RMSE_GKF);
-    peak_myIMM = mean(RMSE_myIMM);
 
 
 end
