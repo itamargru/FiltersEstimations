@@ -10,12 +10,10 @@ function [IMM] = imm_mix(IMM, measurement)
         IMM.P{ii}.posterior = km.P_posterior;
     end
     
+    IMM.x_mixed = [IMM.x{1}.posterior IMM.x{2}.posterior]*IMM.mixing_probs;
     % calculate mixed estimates and covariances
     for jj = 1:r
-        for ii = 1:r
-            IMM.x_mixed(:,jj) = IMM.x_mixed(:,jj)...
-                                   + IMM.x{ii}.posterior*IMM.mixing_probs(ii, jj);
-                                    
+        for ii = 1:r     
             temp = IMM.P{ii}.posterior + (IMM.x{ii}.posterior - IMM.x_mixed(:,jj))...
                                    *(IMM.x{ii}.posterior - IMM.x_mixed(:,jj))';
                                     

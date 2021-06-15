@@ -1,5 +1,5 @@
 close all; clear; clc
-num_experiments = 25;
+num_experiments = 10;
 start = 0.1;
 stop = 2.5;
 
@@ -105,7 +105,7 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G] = runExperiment(
         KM1 = CreateKalmanFilter(A, H, G, Q(1), R, X0, P0);
         KM2 = CreateKalmanFilter(A, H, G, Q(2), R, X0, P0);
 
-        KM = CreateKalmanFilter(A, H, G, 0.8 * Q(2), R, X0, P0);
+        KM = CreateKalmanFilter(A, H, G, 0.8^2 * Q(2), R, X0, P0);
         % IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
         IMM = IMM_Estimator({KM1, KM2}, transMat, prob0);
         GKF = CreateGenieKF(A, H, G, Q(1), R, X0, P0); %inital Q doesnt matter

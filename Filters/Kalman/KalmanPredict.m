@@ -7,6 +7,6 @@ function [Kalman] = KalmanPredict(Kalman)
     P_posterior = Kalman.P_posterior;
     
     Kalman.x_prior = A * x_posterior;
-    Kalman.P_prior = A * P_posterior * A.' + G * Q^2 * G.';
+    Kalman.P_prior = A * P_posterior * A.' + G * Q * G.';
 end
 
