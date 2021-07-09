@@ -28,20 +28,34 @@ for per = 1:num_experiments
         ': process var=', num2str(process_var),...
         ', lambda=', num2str(lambdas(per))])
     
-    [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G] = runExperiment(lambdas(per));
+    [total, UM, MAN] = runExperiment(lambdas(per));
     
-    peak_IMMs(per) = peak_IMM;
-    mean_IMMs(per) = mean_IMM;
-    peak_KFs(per) = peak_KF;
-    mean_KFs(per) = mean_KF;
-    peak_Genies(per) = peak_G;
-    mean_Genies(per) = mean_G;
+    peak_IMMs(per) = total.peak_IMM;
+    mean_IMMs(per) = total.mean_IMM;
+    peak_KFs(per) = total.peak_KF;
+    mean_KFs(per) = total.mean_KF;
+    peak_Genies(per) = total.peak_G;
+    mean_Genies(per) = total.mean_G;
+    
+    UM_peak_IMMs(per) = UM.peak_IMM;
+    UM_mean_IMMs(per) = UM.mean_IMM;
+    UM_peak_KFs(per) = UM.peak_KF;
+    UM_mean_KFs(per) = UM.mean_KF;
+    UM_peak_Genies(per) = UM.peak_G;
+    UM_mean_Genies(per) = UM.mean_G;
+    
+    MAN_peak_IMMs(per) = MAN.peak_IMM;
+    MAN_mean_IMMs(per) = MAN.mean_IMM;
+    MAN_peak_KFs(per) = MAN.peak_KF;
+    MAN_mean_KFs(per) = MAN.mean_KF;
+    MAN_peak_Genies(per) = MAN.peak_G;
+    MAN_mean_Genies(per) = MAN.mean_G;
 end
 disp('Finished');
 
 %% plots
 figure();
-
+% Total
 % Peak RMSE
 subplot(2,1,1);
 plot(lambdas, peak_IMMs);
@@ -63,8 +77,52 @@ plot(lambdas, mean_Genies);
 legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
 title("Mean RMSE");
 
+figure();
+% UM
+% Peak RMSE
+subplot(2,1,1);
+plot(lambdas, UM_peak_IMMs);
+hold on;
+plot(lambdas, UM_peak_KFs);
+hold on;
+plot(lambdas, UM_peak_Genies);
+legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
+title("Peak RMSE for Uniform Motion");
 
-function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G] = runExperiment(lambda)
+% Mean RMSE
+subplot(2,1,2);
+plot(lambdas, UM_mean_IMMs);
+hold on;
+plot(lambdas, UM_mean_KFs);
+hold on;
+plot(lambdas, UM_mean_Genies);
+legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
+title("Mean RMSE for Uniform Motion");
+
+figure();
+% MAN
+% Peak RMSE
+subplot(2,1,1);
+plot(lambdas, MAN_peak_IMMs);
+hold on;
+plot(lambdas, MAN_peak_KFs);
+hold on;
+plot(lambdas, MAN_peak_Genies);
+legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
+title("Peak RMSE for Maneuvering Segments");
+
+% Mean RMSE
+subplot(2,1,2);
+plot(lambdas, MAN_mean_IMMs);
+hold on;
+plot(lambdas, MAN_mean_KFs);
+hold on;
+plot(lambdas, MAN_mean_Genies);
+legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
+title("Mean RMSE for Maneuvering Segments");
+
+
+function [total, UM, MAN] = runExperiment(lambda)
     % params
     T = 5;
     A = [1, T; 0, 1];
@@ -88,6 +146,8 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G] = runExperiment(
     
     vars = Q([1,2,1,2,1,2,1]);  
     results = {};
+    UM_results = {};
+    MAN_results = {};
     
     num_experiments = 100;
     RMSE_IMM = zeros(1, num_experiments);
@@ -118,28 +178,84 @@ function [peak_IMM, mean_IMM, peak_KF, mean_KF, peak_G, mean_G] = runExperiment(
         results{per, 4} = KalmanEstimateTrajectory(KM, measurments);
         results{per, 5} = GenieEstimateTrajectory(GKF, measurments, cur_var);
         results{per, 6} = {trajectory, measurments};
-
+        
+        %segments results (extracted)
+        UM_results{per, 1} = results{per, 1}.x_posterior([1:12 25:36 49:60 73:84],1)';
+        UM_results{per, 2} = results{per, 2}.x_posterior([1:12 25:36 49:60 73:84],1)';
+        UM_results{per, 3} = results{per, 3}.x_posterior([1:12 25:36 49:60 73:84],1)';
+        UM_results{per, 4} = results{per, 4}.x_posterior([1:12 25:36 49:60 73:84],1)';
+        UM_results{per, 5} = results{per, 5}.x_posterior([1:12 25:36 49:60 73:84],1)';
+        UM_results{per, 6} = results{per, 6}{1}(1, [1:12 25:36 49:60 73:84]);
+        
+        MAN_results{per, 1} = results{per, 1}.x_posterior([13:24 37:48 61:72],1)';
+        MAN_results{per, 2} = results{per, 2}.x_posterior([13:24 37:48 61:72],1)';
+        MAN_results{per, 3} = results{per, 3}.x_posterior([13:24 37:48 61:72],1)';
+        MAN_results{per, 4} = results{per, 4}.x_posterior([13:24 37:48 61:72],1)';
+        MAN_results{per, 5} = results{per, 5}.x_posterior([13:24 37:48 61:72],1)';
+        MAN_results{per, 6} = results{per, 6}{1}(1, [13:24 37:48 61:72]);
+        
+        
+        % Total RMSE's
         RMSE_KF1(1, per) = RMSE(results{per, 1}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         RMSE_KF2(1, per) = RMSE(results{per, 2}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         % RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
         RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         RMSE_KF(1, per) = RMSE(results{per, 4}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         RMSE_GKF(1, per) = RMSE(results{per, 5}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
+        
+        % UM & MAN RMSE's
+        RMSE_KF1_UM(1, per) = RMSE(UM_results{per, 1}, UM_results{per, 6});
+        RMSE_KF2_UM(1, per) = RMSE(UM_results{per, 2}, UM_results{per, 6});
+        RMSE_IMM_UM(1, per) = RMSE(UM_results{per, 3}, UM_results{per, 6});
+        RMSE_KF_UM(1, per) = RMSE(UM_results{per, 4}, UM_results{per, 6});
+        RMSE_GKF_UM(1, per) = RMSE(UM_results{per, 5}, UM_results{per, 6});
+        
+        RMSE_KF1_MAN(1, per) = RMSE(MAN_results{per, 1}, MAN_results{per, 6});
+        RMSE_KF2_MAN(1, per) = RMSE(MAN_results{per, 2}, MAN_results{per, 6});
+        RMSE_IMM_MAN(1, per) = RMSE(MAN_results{per, 3}, MAN_results{per, 6});
+        RMSE_KF_MAN(1, per) = RMSE(MAN_results{per, 4}, MAN_results{per, 6});
+        RMSE_GKF_MAN(1, per) = RMSE(MAN_results{per, 5}, MAN_results{per, 6});
 
     end
     
-    peak_KF1 = max(RMSE_KF1);
-    peak_KF2 = max(RMSE_KF2);
-    peak_IMM = max(RMSE_IMM);
-    peak_KF = max(RMSE_KF);
-    peak_G = max(RMSE_GKF);
+    %regular
+    total.peak_KF1 = max(RMSE_KF1);
+    total.peak_KF2 = max(RMSE_KF2);
+    total.peak_IMM = max(RMSE_IMM);
+    total.peak_KF = max(RMSE_KF);
+    total.peak_G = max(RMSE_GKF);
 
-    mean_KF1 = mean(RMSE_KF1);
-    mean_KF2 = mean(RMSE_KF2);
-    mean_IMM = mean(RMSE_IMM);
-    mean_KF = mean(RMSE_KF);
-    mean_G = mean(RMSE_GKF);
+    total.mean_KF1 = mean(RMSE_KF1);
+    total.mean_KF2 = mean(RMSE_KF2);
+    total.mean_IMM = mean(RMSE_IMM);
+    total.mean_KF = mean(RMSE_KF);
+    total.mean_G = mean(RMSE_GKF);
+    
+    % UM
+    UM.peak_KF1 = max(RMSE_KF1_UM);
+    UM.peak_KF2 = max(RMSE_KF2_UM);
+    UM.peak_IMM = max(RMSE_IMM_UM);
+    UM.peak_KF = max(RMSE_KF_UM);
+    UM.peak_G = max(RMSE_GKF_UM);
 
+    UM.mean_KF1 = mean(RMSE_KF1_UM);
+    UM.mean_KF2 = mean(RMSE_KF2_UM);
+    UM.mean_IMM = mean(RMSE_IMM_UM);
+    UM.mean_KF = mean(RMSE_KF_UM);
+    UM.mean_G = mean(RMSE_GKF_UM);
+    
+    % MAN
+    MAN.peak_KF1 = max(RMSE_KF1_MAN);
+    MAN.peak_KF2 = max(RMSE_KF2_MAN);
+    MAN.peak_IMM = max(RMSE_IMM_MAN);
+    MAN.peak_KF = max(RMSE_KF_MAN);
+    MAN.peak_G = max(RMSE_GKF_MAN);
+
+    MAN.mean_KF1 = mean(RMSE_KF1_MAN);
+    MAN.mean_KF2 = mean(RMSE_KF2_MAN);
+    MAN.mean_IMM = mean(RMSE_IMM_MAN);
+    MAN.mean_KF = mean(RMSE_KF_MAN);
+    MAN.mean_G = mean(RMSE_GKF_MAN);
 
 end
 
