@@ -1,5 +1,5 @@
 close all; clear; clc
-num_experiments = 10;
+num_experiments = 25;
 start = 0.1;
 stop = 2.5;
 
@@ -151,8 +151,8 @@ function [total, UM, MAN] = runExperiment(lambda)
     
     num_experiments = 100;
     RMSE_IMM = zeros(1, num_experiments);
-    RMSE_KF1 = zeros(1, num_experiments);
-    RMSE_KF2 = zeros(1, num_experiments);
+%     RMSE_KF1 = zeros(1, num_experiments);
+%     RMSE_KF2 = zeros(1, num_experiments);
     RMSE_KF = zeros(1, num_experiments);
     RMSE_GKF = zeros(1, num_experiments);
     RMSE = @(est, traj) mean((est - traj).^2)^0.5;
@@ -165,14 +165,14 @@ function [total, UM, MAN] = runExperiment(lambda)
         KM1 = CreateKalmanFilter(A, H, G, Q(1), R, X0, P0);
         KM2 = CreateKalmanFilter(A, H, G, Q(2), R, X0, P0);
 
-        KM = CreateKalmanFilter(A, H, G, 0.8^2 * Q(2), R, X0, P0);
+        KM = CreateKalmanFilter(A, H, G, (0.8^2) * Q(2), R, X0, P0);
         % IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
         IMM = IMM_Estimator({KM1, KM2}, transMat, prob0);
         GKF = CreateGenieKF(A, H, G, Q(1), R, X0, P0); %inital Q doesnt matter
 
         %filter results
-        results{per, 1} = KalmanEstimateTrajectory(KM1,measurments); 
-        results{per, 2} = KalmanEstimateTrajectory(KM2,measurments);
+%         results{per, 1} = KalmanEstimateTrajectory(KM1,measurments); 
+%         results{per, 2} = KalmanEstimateTrajectory(KM2,measurments);
         % results{per, 3} = IMMEstimateTrajectory(IMM, measurments);
         results{per, 3} = newIMMEstimateTrajectory(IMM, measurments);
         results{per, 4} = KalmanEstimateTrajectory(KM, measurments);
@@ -180,15 +180,15 @@ function [total, UM, MAN] = runExperiment(lambda)
         results{per, 6} = {trajectory, measurments};
         
         %segments results (extracted)
-        UM_results{per, 1} = results{per, 1}.x_posterior([1:12 25:36 49:60 73:84],1)';
-        UM_results{per, 2} = results{per, 2}.x_posterior([1:12 25:36 49:60 73:84],1)';
+%         UM_results{per, 1} = results{per, 1}.x_posterior([1:12 25:36 49:60 73:84],1)';
+%         UM_results{per, 2} = results{per, 2}.x_posterior([1:12 25:36 49:60 73:84],1)';
         UM_results{per, 3} = results{per, 3}.x_posterior([1:12 25:36 49:60 73:84],1)';
         UM_results{per, 4} = results{per, 4}.x_posterior([1:12 25:36 49:60 73:84],1)';
         UM_results{per, 5} = results{per, 5}.x_posterior([1:12 25:36 49:60 73:84],1)';
         UM_results{per, 6} = results{per, 6}{1}(1, [1:12 25:36 49:60 73:84]);
         
-        MAN_results{per, 1} = results{per, 1}.x_posterior([13:24 37:48 61:72],1)';
-        MAN_results{per, 2} = results{per, 2}.x_posterior([13:24 37:48 61:72],1)';
+%         MAN_results{per, 1} = results{per, 1}.x_posterior([13:24 37:48 61:72],1)';
+%         MAN_results{per, 2} = results{per, 2}.x_posterior([13:24 37:48 61:72],1)';
         MAN_results{per, 3} = results{per, 3}.x_posterior([13:24 37:48 61:72],1)';
         MAN_results{per, 4} = results{per, 4}.x_posterior([13:24 37:48 61:72],1)';
         MAN_results{per, 5} = results{per, 5}.x_posterior([13:24 37:48 61:72],1)';
@@ -196,22 +196,22 @@ function [total, UM, MAN] = runExperiment(lambda)
         
         
         % Total RMSE's
-        RMSE_KF1(1, per) = RMSE(results{per, 1}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
-        RMSE_KF2(1, per) = RMSE(results{per, 2}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
+%         RMSE_KF1(1, per) = RMSE(results{per, 1}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
+%         RMSE_KF2(1, per) = RMSE(results{per, 2}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         % RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 5}{1}(1, :));
         RMSE_IMM(1, per) = RMSE(results{per, 3}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         RMSE_KF(1, per) = RMSE(results{per, 4}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         RMSE_GKF(1, per) = RMSE(results{per, 5}.x_posterior(:, 1)', results{per, 6}{1}(1, :));
         
         % UM & MAN RMSE's
-        RMSE_KF1_UM(1, per) = RMSE(UM_results{per, 1}, UM_results{per, 6});
-        RMSE_KF2_UM(1, per) = RMSE(UM_results{per, 2}, UM_results{per, 6});
+%         RMSE_KF1_UM(1, per) = RMSE(UM_results{per, 1}, UM_results{per, 6});
+%         RMSE_KF2_UM(1, per) = RMSE(UM_results{per, 2}, UM_results{per, 6});
         RMSE_IMM_UM(1, per) = RMSE(UM_results{per, 3}, UM_results{per, 6});
         RMSE_KF_UM(1, per) = RMSE(UM_results{per, 4}, UM_results{per, 6});
         RMSE_GKF_UM(1, per) = RMSE(UM_results{per, 5}, UM_results{per, 6});
         
-        RMSE_KF1_MAN(1, per) = RMSE(MAN_results{per, 1}, MAN_results{per, 6});
-        RMSE_KF2_MAN(1, per) = RMSE(MAN_results{per, 2}, MAN_results{per, 6});
+%         RMSE_KF1_MAN(1, per) = RMSE(MAN_results{per, 1}, MAN_results{per, 6});
+%         RMSE_KF2_MAN(1, per) = RMSE(MAN_results{per, 2}, MAN_results{per, 6});
         RMSE_IMM_MAN(1, per) = RMSE(MAN_results{per, 3}, MAN_results{per, 6});
         RMSE_KF_MAN(1, per) = RMSE(MAN_results{per, 4}, MAN_results{per, 6});
         RMSE_GKF_MAN(1, per) = RMSE(MAN_results{per, 5}, MAN_results{per, 6});
@@ -219,40 +219,40 @@ function [total, UM, MAN] = runExperiment(lambda)
     end
     
     %regular
-    total.peak_KF1 = max(RMSE_KF1);
-    total.peak_KF2 = max(RMSE_KF2);
+%     total.peak_KF1 = max(RMSE_KF1);
+%     total.peak_KF2 = max(RMSE_KF2);
     total.peak_IMM = max(RMSE_IMM);
     total.peak_KF = max(RMSE_KF);
     total.peak_G = max(RMSE_GKF);
 
-    total.mean_KF1 = mean(RMSE_KF1);
-    total.mean_KF2 = mean(RMSE_KF2);
+%     total.mean_KF1 = mean(RMSE_KF1);
+%     total.mean_KF2 = mean(RMSE_KF2);
     total.mean_IMM = mean(RMSE_IMM);
     total.mean_KF = mean(RMSE_KF);
     total.mean_G = mean(RMSE_GKF);
     
     % UM
-    UM.peak_KF1 = max(RMSE_KF1_UM);
-    UM.peak_KF2 = max(RMSE_KF2_UM);
+%     UM.peak_KF1 = max(RMSE_KF1_UM);
+%     UM.peak_KF2 = max(RMSE_KF2_UM);
     UM.peak_IMM = max(RMSE_IMM_UM);
     UM.peak_KF = max(RMSE_KF_UM);
     UM.peak_G = max(RMSE_GKF_UM);
 
-    UM.mean_KF1 = mean(RMSE_KF1_UM);
-    UM.mean_KF2 = mean(RMSE_KF2_UM);
+%     UM.mean_KF1 = mean(RMSE_KF1_UM);
+%     UM.mean_KF2 = mean(RMSE_KF2_UM);
     UM.mean_IMM = mean(RMSE_IMM_UM);
     UM.mean_KF = mean(RMSE_KF_UM);
     UM.mean_G = mean(RMSE_GKF_UM);
     
     % MAN
-    MAN.peak_KF1 = max(RMSE_KF1_MAN);
-    MAN.peak_KF2 = max(RMSE_KF2_MAN);
+%     MAN.peak_KF1 = max(RMSE_KF1_MAN);
+%     MAN.peak_KF2 = max(RMSE_KF2_MAN);
     MAN.peak_IMM = max(RMSE_IMM_MAN);
     MAN.peak_KF = max(RMSE_KF_MAN);
     MAN.peak_G = max(RMSE_GKF_MAN);
 
-    MAN.mean_KF1 = mean(RMSE_KF1_MAN);
-    MAN.mean_KF2 = mean(RMSE_KF2_MAN);
+%     MAN.mean_KF1 = mean(RMSE_KF1_MAN);
+%     MAN.mean_KF2 = mean(RMSE_KF2_MAN);
     MAN.mean_IMM = mean(RMSE_IMM_MAN);
     MAN.mean_KF = mean(RMSE_KF_MAN);
     MAN.mean_G = mean(RMSE_GKF_MAN);

@@ -1,24 +1,25 @@
-function [IMM] = imm_mix(IMM, measurement)
-    r = IMM.size(end);
+function [IMMr] = imm_mix(IMM, measurement)
+    IMMr = IMM;
+    r = IMMr.size(end);
     
     % wrong, need to just use prior and post!!!
     
     % use each of the kalman filters to get estimate and covariance
     for ii = 1:r
-        km = IMM.KalmanFilters{ii};
-        IMM.x{ii}.posterior = km.x_posterior;
-        IMM.P{ii}.posterior = km.P_posterior;
+        km = IMMr.KalmanFilters{ii};
+        IMMr.x{ii}.posterior = km.x_posterior;
+        IMMr.P{ii}.posterior = km.P_posterior;
     end
     
-    IMM.x_mixed = [IMM.x{1}.posterior IMM.x{2}.posterior]*IMM.mixing_probs;
+    IMMr.x_mixed = [IMMr.x{1}.posterior IMMr.x{2}.posterior]*IMMr.mixing_probs;
     % calculate mixed estimates and covariances
     for jj = 1:r
         for ii = 1:r     
-            temp = IMM.P{ii}.posterior + (IMM.x{ii}.posterior - IMM.x_mixed(:,jj))...
-                                   *(IMM.x{ii}.posterior - IMM.x_mixed(:,jj))';
+            temp = IMMr.P{ii}.posterior + (IMMr.x{ii}.posterior - IMMr.x_mixed(:,jj))...
+                                   *(IMMr.x{ii}.posterior - IMMr.x_mixed(:,jj))';
                                     
-            IMM.P_mixed(:,:,jj) = IMM.P_mixed(:,:,jj)...
-                                   + temp*IMM.mixing_probs(ii, jj);
+            IMMr.P_mixed(:,:,jj) = IMMr.P_mixed(:,:,jj)...
+                                   + temp*IMMr.mixing_probs(ii, jj);
         end
     end
 end

@@ -1,29 +1,30 @@
-function [IMM, res] = imm_step(IMM, measurement)
-    r = IMM.size(end);
+function [IMMr, res] = imm_step(IMM, measurement)
+    IMMr = IMM;
+    r = IMMr.size(end);
     
     % IMM iteration
-    IMM = imm_calc_mixing_probs(IMM);
-    IMM = imm_mix(IMM, measurement);
-    IMM = imm_mm_filtering(IMM, measurement);
-    IMM = imm_mode_prob_pdate(IMM);
-    IMM = imm_combination(IMM);
+    IMMr = imm_calc_mixing_probs(IMMr);
+    IMMr = imm_mix(IMMr, measurement);
+    IMMr = imm_mm_filtering(IMMr, measurement);
+    IMMr = imm_mode_prob_pdate(IMMr);
+    IMMr = imm_combination(IMMr);
     
     % return results
-    res.x_posterior = IMM.x_posterior;
-    res.P_posterior = IMM.P_posterior;
-    res.x_prior = IMM.x_prior;
-    res.P_prior = IMM.P_prior;
-    res.model_prob = IMM.mu;
+    res.x_posterior = IMMr.x_posterior;
+    res.P_posterior = IMMr.P_posterior;
+    res.x_prior = IMMr.x_prior;
+    res.P_prior = IMMr.P_prior;
+    res.model_prob = IMMr.mu;
     
     % reinitialize the iteration parameters
-    IMM.x = {};
-    IMM.P = {};
-    IMM.x_mixed = zeros(IMM.d, r);
-    IMM.P_mixed = zeros(IMM.d, IMM.d, r);
-    IMM.liklelihood = zeros(1, r);
+    IMMr.x = {};
+    IMMr.P = {};
+    IMMr.x_mixed = zeros(IMMr.d, r);
+    IMMr.P_mixed = zeros(IMMr.d, IMMr.d, r);
+    IMMr.liklelihood = zeros(1, r);
     
-    IMM.x_posterior = zeros(IMM.d, 1);
-    IMM.P_posterior = zeros(IMM.d);
-    IMM.x_prior = zeros(IMM.d, 1);
-    IMM.P_prior = zeros(IMM.d);
+    IMMr.x_posterior = zeros(IMMr.d, 1);
+    IMMr.P_posterior = zeros(IMMr.d);
+    IMMr.x_prior = zeros(IMMr.d, 1);
+    IMMr.P_prior = zeros(IMMr.d);
 end

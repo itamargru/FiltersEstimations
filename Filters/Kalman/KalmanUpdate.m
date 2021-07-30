@@ -8,8 +8,9 @@ function [Kalman] = KalmanUpdate(Kalman, z)
     
     y = z - H * x_prior;
     S = H * P_prior * H.' + R;
-    K = P_prior * H' * S^-1;
+    K = P_prior * H' * pinv(S);
     
     Kalman.x_posterior = x_prior + K * y;
-    Kalman.P_posterior = (eye(d) - K * H) * P_prior;
+%     Kalman.P_posterior = (eye(d) - K * H) * P_prior;
+    Kalman.P_posterior = P_prior - K * S * K';
 end

@@ -1,22 +1,23 @@
-function [IMM] = imm_combination(IMM)
-    r = IMM.size(end);
+function [IMMr] = imm_combination(IMM)
+    IMMr = IMM;
+    r = IMMr.size(end);
     % combine model conditioned estimates (for output purposes)
     % posterior
     for jj = 1:r
-        IMM.x_posterior = IMM.x_posterior + IMM.x{jj}.posterior*IMM.mu(jj);
+        IMMr.x_posterior = IMMr.x_posterior + IMMr.x{jj}.posterior*IMMr.mu(jj);
     end
     for jj = 1:r
-        temp = IMM.P{jj}.posterior + (IMM.x_posterior - IMM.x{jj}.posterior)...
-                                *(IMM.x_posterior - IMM.x{jj}.posterior)';
-        IMM.P_posterior = IMM.P_posterior + temp*IMM.mu(jj);
+        temp = IMMr.P{jj}.posterior + (IMMr.x_posterior - IMMr.x{jj}.posterior)...
+                                *(IMMr.x_posterior - IMMr.x{jj}.posterior)';
+        IMMr.P_posterior = IMMr.P_posterior + temp*IMMr.mu(jj);
     end
     % prior
     for jj = 1:r
-        IMM.x_prior = IMM.x_prior + IMM.x{jj}.prior*IMM.mu(jj);
+        IMMr.x_prior = IMMr.x_prior + IMMr.x{jj}.prior*IMMr.mu(jj);
     end
     for jj = 1:r
-        temp = IMM.P{jj}.prior + (IMM.x_prior - IMM.x{jj}.prior)...
-                                *(IMM.x_prior - IMM.x{jj}.prior)';
-        IMM.P_prior = IMM.P_prior + temp*IMM.mu(jj);
+        temp = IMMr.P{jj}.prior + (IMMr.x_prior - IMMr.x{jj}.prior)...
+                                *(IMMr.x_prior - IMMr.x{jj}.prior)';
+        IMMr.P_prior = IMMr.P_prior + temp*IMMr.mu(jj);
     end
 end
