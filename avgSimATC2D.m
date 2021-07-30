@@ -1,12 +1,12 @@
 close all; clear; clc
-num_experiments = 10;
-start = 0.1;
-stop = 2.5;
+num_experiments = 15;
+start = 0.05;
+stop = 3;
 
 % lambdas = logspace(log10(start), log10(stop), num_experiments);
-lambdas = linspace(start, stop, num_experiments);
+degrees = linspace(start, stop, num_experiments);
 
-
+lambdas = zeros(1, num_experiments);
 peak_IMMs = zeros(1, num_experiments);
 mean_IMMs = zeros(1, num_experiments);
 peak_KFs = zeros(1, num_experiments);
@@ -23,12 +23,13 @@ disp('Starting experiments:');
 fprintf('\n')
 for per = 1:num_experiments
 
-    process_var = lambdas(per)^2 * R / T^4;
+    deg = degrees(per);
+    [total, UM, MAN, lambda] = runExperiment(deg);
     disp(['experiment number ',num2str(per),'/', num2str(num_experiments),...
-        ': process var=', num2str(process_var),...
-        ', lambda=', num2str(lambdas(per))])
+        ': angle deg=', num2str(deg),...
+        ', lambda=', num2str(lambda)])
     
-    [total, UM, MAN] = runExperiment(lambdas(per));
+    lambdas(per) = lambda;
     
     peak_IMMs(per) = total.peak_IMM;
     mean_IMMs(per) = total.mean_IMM;
@@ -116,7 +117,7 @@ legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
 title("Mean RMSE for Maneuvering Segments");
 
 
-function [total, UM, MAN] = runExperiment(lambda)
+function [total, UM, MAN, lambda] = runExperiment(deg)
     % params
     T = 5;
     A = [1, T, 0, 0;
@@ -139,10 +140,6 @@ function [total, UM, MAN] = runExperiment(lambda)
 
     prob0 = [1, 0];
     transMat = [0.95, 0.05; 0.1, 0.9];
-%     lambda = (Q / R)^0.5 * T^2
-    process_var = lambda^2 * R(1,1) / T^4;
-    deg = 2*lambda;
-    Q = [0.200^2, process_var]; % model variances
     
 %     vars = Q([1,2,1,2,1,2,1]);  
     results = {};
@@ -162,20 +159,35 @@ function [total, UM, MAN] = runExperiment(lambda)
         
         % CT
         [pos, vel, mask] = ATCTrajectory([0, 120, 0, 0]', [deg, -deg], 60, T);
-        if (deg == 5)
-            plot(pos(1, :), pos(2, :));
-        end
+        
+%         if (deg == 5)
+%             plot(pos(1, :), pos(2, :));
+%         end
         
         measurments = H * [pos(1,:); vel(1,: ); pos(2,:); vel(2,:)] + R.^0.5 * randn(2, length(pos));
         
         UM_idx = find(~mask);
         MAN_idx = find(mask);
+        
+        % calculate radius of turn and process variance
+        p1 = pos(:, MAN_idx(1));
+        p2 = pos(:, MAN_idx(2));
+        Base = norm(p2 - p1);
+        radius = Base / (2 * sin(deg2rad(deg*T)/2));
+        fprintf("Base = %f, Radius = %f \n", Base, radius);
+        speed = norm([X0(2), X0(4)]);
+%         var_proc = (20*speed * T)^2 / radius^2   
+        var_proc =  (speed^2 / radius)^2;
+        
+        Q = [0.100^2, var_proc]; % model variances
 
+        
+        
         %filters init
-        KM1 = CreateKalmanFilter(A, H, G, 0.1, R, X0, P0);
-        KM2 = CreateKalmanFilter(A, H, G, 2, R, X0, P0);
+        KM1 = CreateKalmanFilter(A, H, G, Q(1), R, X0, P0);
+        KM2 = CreateKalmanFilter(A, H, G, Q(2), R, X0, P0);
 
-        KM = CreateKalmanFilter(A, H, G, 1, R, X0, P0);
+        KM = CreateKalmanFilter(A, H, G, (0.8^2)*Q(2), R, X0, P0);
         % IMM = CreateIMMFilter({KM1, KM2}, transMat, prob0);
         IMM = IMM_Estimator({KM1, KM2}, transMat, prob0);
 %         GKF = CreateGenieKF(A, H, G, Q(1), R, X0, P0); %inital Q doesnt matter
@@ -189,15 +201,17 @@ function [total, UM, MAN] = runExperiment(lambda)
 %         results{per, 5} = GenieEstimateTrajectory(GKF, measurments, cur_var);
         results{per, 6} = {pos, measurments};
         
-%         figure()
-%         plot(pos(1,:), pos(2,:))
-%         hold on 
-%         plot(measurments(1,:), measurments(2,:),'+');
-%         km_p = results{per, 4}.x_posterior(:,[1,3])';
-%         plot(km_p(1,:), km_p(2,:));
-%         imm_p = results{per, 3}.x_posterior(:,[1,3])';
-%         plot(imm_p(1,:), imm_p(2,:));
-%         legend(["gt", "meas", "kf", "imm"]);
+        if deg < 8 && deg > 7 && per == 1
+            figure()
+            plot(pos(1,:), pos(2,:))
+            hold on 
+            plot(measurments(1,:), measurments(2,:),'+');
+            km_p = results{per, 4}.x_posterior(:,[1,3])';
+            plot(km_p(1,:), km_p(2,:));
+            imm_p = results{per, 3}.x_posterior(:,[1,3])';
+            plot(imm_p(1,:), imm_p(2,:));
+            legend(["gt", "meas", "kf", "imm"]);
+        end
         
         %segments results (extracted)
         UM_results{per, 1} = results{per, 1}.x_posterior(UM_idx,[1,3])';
@@ -237,6 +251,7 @@ function [total, UM, MAN] = runExperiment(lambda)
 %         RMSE_GKF_MAN(1, per) = RMSE(MAN_results{per, 5}, MAN_results{per, 6});
 
     end
+    lambda = (var_proc * T^4 / (2^(0.5) * R(1,1)))^0.5;
     
     %regular
     total.peak_KF1 = max(RMSE_KF1);
