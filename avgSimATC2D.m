@@ -1,7 +1,8 @@
 close all; clear; clc
-num_experiments = 15;
+num_experiments = 25;
 start = 0.05;
 stop = 3;
+monete_carlo_size = 100;
 
 % lambdas = logspace(log10(start), log10(stop), num_experiments);
 degrees = linspace(start, stop, num_experiments);
@@ -24,7 +25,7 @@ fprintf('\n')
 for per = 1:num_experiments
 
     deg = degrees(per);
-    [total, UM, MAN, lambda] = runExperiment(deg);
+    [total, UM, MAN, lambda] = runExperiment(deg, monete_carlo_size);
     disp(['experiment number ',num2str(per),'/', num2str(num_experiments),...
         ': angle deg=', num2str(deg),...
         ', lambda=', num2str(lambda)])
@@ -54,8 +55,19 @@ for per = 1:num_experiments
 end
 disp('Finished');
 
+
 %% plots
-figure();
+cells_titles = {"", "Monte Carlo of " + num2str(monete_carlo_size)...
+    + " Experiments"};
+
+str_now = string(datetime('now', 'Format', 'yy-MM-dd_HH-mm-ss'));
+[root, ~, ~] = fileparts(matlab.desktop.editor.getActiveFilename);
+resultPath = fullfile(root, "Results", str_now);
+if not(isfolder(resultPath))
+    mkdir(resultPath);
+end 
+
+f = figure();
 % Total
 % Peak RMSE
 subplot(2,1,1);
@@ -63,9 +75,9 @@ plot(lambdas, peak_IMMs);
 hold on;
 plot(lambdas, peak_KFs);
 % plot(lambdas, peak_Genies);
-legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
-title("Peak RMSE");
-
+legend("IMM", "Kalman Filter");
+cells_titles{1} = "Peak RMSE";
+title(cells_titles);
 
 % Mean RMSE
 subplot(2,1,2);
@@ -73,10 +85,12 @@ plot(lambdas, mean_IMMs);
 hold on;
 plot(lambdas, mean_KFs);
 % plot(lambdas, mean_Genies);
-legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
+legend("IMM", "Kalman Filter");
 title("Mean RMSE");
 
-figure();
+saveas(f, fullfile(resultPath, "RMSE_all.jpg"));
+
+f = figure();
 % UM
 % Peak RMSE
 subplot(2,1,1);
@@ -84,8 +98,9 @@ plot(lambdas, UM_peak_IMMs);
 hold on;
 plot(lambdas, UM_peak_KFs);
 % plot(lambdas, UM_peak_Genies);
-legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
-title("Peak RMSE for Uniform Motion");
+legend("IMM", "Kalman Filter");
+cells_titles{1} = "Peak RMSE for Uniform Motion";
+title(cells_titles);
 
 % Mean RMSE
 subplot(2,1,2);
@@ -93,10 +108,12 @@ plot(lambdas, UM_mean_IMMs);
 hold on;
 plot(lambdas, UM_mean_KFs);
 % plot(lambdas, UM_mean_Genies);
-legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
+legend("IMM", "Kalman Filter");
 title("Mean RMSE for Uniform Motion");
 
-figure();
+saveas(f, fullfile(resultPath, "RMSE_uniform_motion.jpg"));
+
+f = figure();
 % MAN
 % Peak RMSE
 subplot(2,1,1);
@@ -104,8 +121,9 @@ plot(lambdas, MAN_peak_IMMs);
 hold on;
 plot(lambdas, MAN_peak_KFs);
 % plot(lambdas, MAN_peak_Genies);
-legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
-title("Peak RMSE for Maneuvering Segments");
+legend("IMM", "Kalman Filter");
+cells_titles{1} = "Peak RMSE for Maneuvering Segments";
+title(cells_titles);
 
 % Mean RMSE
 subplot(2,1,2);
@@ -113,11 +131,13 @@ plot(lambdas, MAN_mean_IMMs);
 hold on;
 plot(lambdas, MAN_mean_KFs);
 % plot(lambdas, MAN_mean_Genies);
-legend("IMM", "Kalman Filter", "Genie KF", "myIMM");
+legend("IMM", "Kalman Filter");
 title("Mean RMSE for Maneuvering Segments");
 
+saveas(f, fullfile(resultPath, "RMSE_maneuvering.jpg"));
 
-function [total, UM, MAN, lambda] = runExperiment(deg)
+
+function [total, UM, MAN, lambda] = runExperiment(deg, num_experiments)
     % params
     T = 5;
     A = [1, T, 0, 0;
@@ -145,8 +165,7 @@ function [total, UM, MAN, lambda] = runExperiment(deg)
     results = {};
     UM_results = {};
     MAN_results = {};
-    
-    num_experiments = 100;
+
     RMSE_IMM = zeros(1, num_experiments);
     RMSE_KF1 = zeros(1, num_experiments);
     RMSE_KF2 = zeros(1, num_experiments);
@@ -174,7 +193,9 @@ function [total, UM, MAN, lambda] = runExperiment(deg)
         p2 = pos(:, MAN_idx(2));
         Base = norm(p2 - p1);
         radius = Base / (2 * sin(deg2rad(deg*T)/2));
-        fprintf("Base = %f, Radius = %f \n", Base, radius);
+        if per == 1
+            fprintf("Base = %f, Radius = %f \n", Base, radius);
+        end
         speed = norm([X0(2), X0(4)]);
 %         var_proc = (20*speed * T)^2 / radius^2   
         var_proc =  (speed^2 / radius)^2;
