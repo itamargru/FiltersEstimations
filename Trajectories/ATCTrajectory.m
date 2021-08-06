@@ -1,4 +1,4 @@
-function [traj, vel, maneuver_mask] = ATCTrajectory(x0, angsDeg, sectionLengthSec, timeIntervalSec)
+function [traj, vel, maneuver_mask] = ATCTrajectory(x0, angsDeg, sectionLengthSec, timeIntervalSec, runType)
 
     T = timeIntervalSec;
     L = round(sectionLengthSec / T);
@@ -28,7 +28,13 @@ function [traj, vel, maneuver_mask] = ATCTrajectory(x0, angsDeg, sectionLengthSe
             traj = [traj, [state; zeros(1, size(state, 2))]];
         end
         % make turn
-        turn_num_iter = round(abs((pi/2) / (ang * T))); % make 90 deg rot
+        if strcmpi(runType, "const length")
+            turn_num_iter = L;
+        elseif strcmpi(runType, "90 deg")
+            turn_num_iter = round(abs((pi/2) / (ang * T))); % make 90 deg rot
+        else
+            error("support only 'const length' and '90 deg' runType");
+        end
         state = zeros(d, turn_num_iter);
         for ii = 1: turn_num_iter
             x = R(ang) * x;

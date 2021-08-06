@@ -1,11 +1,13 @@
 close all; clear; clc
 num_experiments = 25;
-start = 0.05;
-stop = 3;
+start = 1;
+stop2 = 25;
 monete_carlo_size = 100;
 
 % lambdas = logspace(log10(start), log10(stop), num_experiments);
-degrees = linspace(start, stop, num_experiments);
+degrees = linspace(start, stop2, num_experiments);
+% degrees = [degrees, linspace(stop1, stop2, num_experiments)];
+num_experiments = numel(degrees);
 
 lambdas = zeros(1, num_experiments);
 peak_IMMs = zeros(1, num_experiments);
@@ -177,7 +179,7 @@ function [total, UM, MAN, lambda] = runExperiment(deg, num_experiments)
 %         measurments = H * trajectory + R^0.5 * randn(1, length(trajectory));
         
         % CT
-        [pos, vel, mask] = ATCTrajectory([0, 120, 0, 0]', [deg, -deg], 60, T);
+        [pos, vel, mask] = ATCTrajectory([0, 120, 0, 0]', [deg, -deg], 60, T, "const length");
         
 %         if (deg == 5)
 %             plot(pos(1, :), pos(2, :));
@@ -197,12 +199,9 @@ function [total, UM, MAN, lambda] = runExperiment(deg, num_experiments)
             fprintf("Base = %f, Radius = %f \n", Base, radius);
         end
         speed = norm([X0(2), X0(4)]);
-%         var_proc = (20*speed * T)^2 / radius^2   
-        var_proc =  (speed^2 / radius)^2;
+        var_proc =  (speed^2 / radius)^2;  % angular acceleration
         
         Q = [0.100^2, var_proc]; % model variances
-
-        
         
         %filters init
         KM1 = CreateKalmanFilter(A, H, G, Q(1), R, X0, P0);
@@ -272,7 +271,7 @@ function [total, UM, MAN, lambda] = runExperiment(deg, num_experiments)
 %         RMSE_GKF_MAN(1, per) = RMSE(MAN_results{per, 5}, MAN_results{per, 6});
 
     end
-    lambda = (var_proc * T^4 / (2^(0.5) * R(1,1)))^0.5;
+    lambda = (var_proc * T^4 / trace(R))^0.5;
     
     %regular
     total.peak_KF1 = max(RMSE_KF1);
